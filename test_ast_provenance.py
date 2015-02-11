@@ -1,5 +1,6 @@
 import unittest
 import ast
+import sys
 
 from ast_provenance import ProvenanceVisitor as Visitor
 
@@ -160,6 +161,181 @@ class TestProvenanceVisitor(unittest.TestCase):
         self.assertEqual(attribute3.last_line, 3)
         self.assertEqual(attribute3.last_col, 1)
         self.assertEqual(attribute3.uid, (2, 1))
+
+    def test_index(self):
+        code = ("#bla\n"
+                "a[1]")
+        nodes = get_nodes(code, ast.Index)
+        index = nodes[0]
+        self.assertEqual(index.first_line, 2)
+        self.assertEqual(index.first_col, 2)
+        self.assertEqual(index.last_line, 2)
+        self.assertEqual(index.last_col, 3)
+        self.assertEqual(index.uid, (2, 3))
+
+    def test_ellipsis(self):
+        code = ("#bla\n"
+                "a[...]")
+        nodes = get_nodes(code, ast.Ellipsis)
+        ellipsis = nodes[0]
+        self.assertEqual(ellipsis.first_line, 2)
+        self.assertEqual(ellipsis.first_col, 2)
+        self.assertEqual(ellipsis.last_line, 2)
+        self.assertEqual(ellipsis.last_col, 5)
+        self.assertEqual(ellipsis.uid, (2, 5))
+
+    def test_ellipsis2(self):
+        if sys.version_info < (3, 0):
+            """ Invalid Python 3 syntax """
+            code = ("#bla\n"
+                    "a[.\\\n"
+                    "..]")
+            nodes = get_nodes(code, ast.Ellipsis)
+            ellipsis = nodes[0]
+            self.assertEqual(ellipsis.first_line, 2)
+            self.assertEqual(ellipsis.first_col, 2)
+            self.assertEqual(ellipsis.last_line, 3)
+            self.assertEqual(ellipsis.last_col, 2)
+            self.assertEqual(ellipsis.uid, (3, 2))
+
+    def test_slice(self):
+        code = ("#bla\n"
+                "a[1:2:3]")
+        nodes = get_nodes(code, ast.Slice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 2)
+        self.assertEqual(slice_node.last_col, 7)
+        self.assertEqual(slice_node.uid, (2, 4))
+
+    def test_slice2(self):
+        code = ("#bla\n"
+                "a[:\\\n"
+                "2:3]")
+        nodes = get_nodes(code, ast.Slice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 3)
+        self.assertEqual(slice_node.last_col, 3)
+        self.assertEqual(slice_node.uid, (2, 3))
+
+    def test_slice3(self):
+        code = ("#bla\n"
+                "a[:\\\n"
+                ":2]")
+        nodes = get_nodes(code, ast.Slice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 3)
+        self.assertEqual(slice_node.last_col, 2)
+        self.assertEqual(slice_node.uid, (2, 3))
+
+    def test_slice4(self):
+        code = ("#bla\n"
+                "a[:]")
+        nodes = get_nodes(code, ast.Slice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 2)
+        self.assertEqual(slice_node.last_col, 3)
+        self.assertEqual(slice_node.uid, (2, 3))
+
+    def test_slice5(self):
+        code = ("#bla\n"
+                "a[::]")
+        nodes = get_nodes(code, ast.Slice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 2)
+        self.assertEqual(slice_node.last_col, 4)
+        self.assertEqual(slice_node.uid, (2, 3))
+
+    def test_slice6(self):
+        code = ("#bla\n"
+                "a[11:2\\\n"
+                ":]")
+        nodes = get_nodes(code, ast.Slice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 3)
+        self.assertEqual(slice_node.last_col, 1)
+        self.assertEqual(slice_node.uid, (2, 5))
+
+    def test_ext_slice(self):
+        code = ("#bla\n"
+                "a[1:2,3]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 2)
+        self.assertEqual(slice_node.last_col, 7)
+        self.assertEqual(slice_node.uid, (2, 6))
+
+    def test_ext_slice2(self):
+        code = ("#bla\n"
+                "a[1:2:,3]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 2)
+        self.assertEqual(slice_node.last_col, 8)
+        self.assertEqual(slice_node.uid, (2, 7))
+
+    def test_ext_slice2(self):
+        code = ("#bla\n"
+                "a[3,1:2:]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        slice_node = nodes[0]
+        self.assertEqual(slice_node.first_line, 2)
+        self.assertEqual(slice_node.first_col, 2)
+        self.assertEqual(slice_node.last_line, 2)
+        self.assertEqual(slice_node.last_col, 8)
+        self.assertEqual(slice_node.uid, (2, 4))
+
+    def test_subscript(self):
+        code = ("#bla\n"
+                "a\\\n"
+                "[1]")
+        nodes = get_nodes(code, ast.Subscript)
+        subscript = nodes[0]
+        self.assertEqual(subscript.first_line, 2)
+        self.assertEqual(subscript.first_col, 0)
+        self.assertEqual(subscript.last_line, 3)
+        self.assertEqual(subscript.last_col, 3)
+        self.assertEqual(subscript.uid, (3, 3))
+
+    def test_subscript2(self):
+        code = ("#bla\n"
+                "a[\n"
+                "1]")
+        nodes = get_nodes(code, ast.Subscript)
+        subscript = nodes[0]
+        self.assertEqual(subscript.first_line, 2)
+        self.assertEqual(subscript.first_col, 0)
+        self.assertEqual(subscript.last_line, 3)
+        self.assertEqual(subscript.last_col, 2)
+        self.assertEqual(subscript.uid, (3, 2))
+
+    def test_subscript3(self):
+        code = ("#bla\n"
+                "a[1:\n"
+                "2,\n"
+                "3]")
+        nodes = get_nodes(code, ast.Subscript)
+        subscript = nodes[0]
+        self.assertEqual(subscript.first_line, 2)
+        self.assertEqual(subscript.first_col, 0)
+        self.assertEqual(subscript.last_line, 4)
+        self.assertEqual(subscript.last_col, 2)
+        self.assertEqual(subscript.uid, (4, 2))
 
 
 if __name__ == '__main__':
