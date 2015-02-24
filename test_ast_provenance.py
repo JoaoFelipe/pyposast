@@ -24,6 +24,13 @@ class GetVisitor(ast.NodeVisitor):
 def get_nodes(code, desired_type):
     return GetVisitor(Visitor(code, PATH).tree, desired_type).result
 
+def only_python2(fn):
+    def decorator(*args, **kwargs):
+        if sys.version_info < (3, 0):
+            return fn(*args, **kwargs)
+        return None
+    return decorator
+
 
 class TestProvenanceVisitor(unittest.TestCase):
 
@@ -48,6 +55,43 @@ class TestProvenanceVisitor(unittest.TestCase):
         self.assertEqual(num.last_line, 2)
         self.assertEqual(num.last_col, 2)
         self.assertEqual(num.uid, (2, 2))
+
+    @only_python2
+    def test_num2(self):
+        """ Python 3 Num uses the minus as unaryop, USub """
+        code = ("#bla\n"
+                "-  1245")
+        nodes = get_nodes(code, ast.Num)
+        num = nodes[0]
+        self.assertEqual(num.first_line, 2)
+        self.assertEqual(num.first_col, 0)
+        self.assertEqual(num.last_line, 2)
+        self.assertEqual(num.last_col, 7)
+        self.assertEqual(num.uid, (2, 7))
+
+    @only_python2
+    def test_num3(self):
+        """ Python 3 Num uses the minus as unaryop, USub """
+        code = ("#bla\n"
+                "-  0")
+        nodes = get_nodes(code, ast.Num)
+        num = nodes[0]
+        self.assertEqual(num.first_line, 2)
+        self.assertEqual(num.first_col, 0)
+        self.assertEqual(num.last_line, 2)
+        self.assertEqual(num.last_col, 4)
+        self.assertEqual(num.uid, (2, 4))
+
+    def test_num4(self):
+        code = ("#bla\n"
+                "0x1245")
+        nodes = get_nodes(code, ast.Num)
+        num = nodes[0]
+        self.assertEqual(num.first_line, 2)
+        self.assertEqual(num.first_col, 0)
+        self.assertEqual(num.last_line, 2)
+        self.assertEqual(num.last_col, 6)
+        self.assertEqual(num.uid, (2, 6))
 
     def test_str(self):
         code = ("#bla\n"
@@ -184,19 +228,19 @@ class TestProvenanceVisitor(unittest.TestCase):
         self.assertEqual(ellipsis.last_col, 5)
         self.assertEqual(ellipsis.uid, (2, 5))
 
+    @only_python2
     def test_ellipsis2(self):
-        if sys.version_info < (3, 0):
-            """ Invalid Python 3 syntax """
-            code = ("#bla\n"
-                    "a[.\\\n"
-                    "..]")
-            nodes = get_nodes(code, ast.Ellipsis)
-            ellipsis = nodes[0]
-            self.assertEqual(ellipsis.first_line, 2)
-            self.assertEqual(ellipsis.first_col, 2)
-            self.assertEqual(ellipsis.last_line, 3)
-            self.assertEqual(ellipsis.last_col, 2)
-            self.assertEqual(ellipsis.uid, (3, 2))
+        """ Invalid Python 3 syntax """
+        code = ("#bla\n"
+                "a[.\\\n"
+                "..]")
+        nodes = get_nodes(code, ast.Ellipsis)
+        ellipsis = nodes[0]
+        self.assertEqual(ellipsis.first_line, 2)
+        self.assertEqual(ellipsis.first_col, 2)
+        self.assertEqual(ellipsis.last_line, 3)
+        self.assertEqual(ellipsis.last_col, 2)
+        self.assertEqual(ellipsis.uid, (3, 2))
 
     def test_slice(self):
         code = ("#bla\n"
@@ -328,16 +372,386 @@ class TestProvenanceVisitor(unittest.TestCase):
         code = ("#bla\n"
                 "a[1:\n"
                 "2,\n"
-                "3]")
+                "3 ]")
         nodes = get_nodes(code, ast.Subscript)
         subscript = nodes[0]
         self.assertEqual(subscript.first_line, 2)
         self.assertEqual(subscript.first_col, 0)
         self.assertEqual(subscript.last_line, 4)
-        self.assertEqual(subscript.last_col, 2)
-        self.assertEqual(subscript.uid, (4, 2))
+        self.assertEqual(subscript.last_col, 3)
+        self.assertEqual(subscript.uid, (4, 3))
 
+    def test_tuple(self):
+        code = ("#bla\n"
+                "(\n"
+                "1, 2,\n"
+                "3\n"
+                ")")
+        nodes = get_nodes(code, ast.Tuple)
+        tup = nodes[0]
+        self.assertEqual(tup.first_line, 3)
+        self.assertEqual(tup.first_col, 0)
+        self.assertEqual(tup.last_line, 4)
+        self.assertEqual(tup.last_col, 1)
+        self.assertEqual(tup.uid, (3, 1))
+
+    def test_tuple2(self):
+        code = ("#bla\n"
+                "(\n"
+                ")")
+
+        nodes = get_nodes(code, ast.Tuple)
+        tup = nodes[0]
+        self.assertEqual(tup.first_line, 2)
+        self.assertEqual(tup.first_col, 0)
+        self.assertEqual(tup.last_line, 3)
+        self.assertEqual(tup.last_col, 1)
+        self.assertEqual(tup.uid, (3, 1))
+
+    def _test_tuple3(self):
+        code = ("#bla\n"
+                "(((0),\n"
+                "1, 2,\n"
+                "3\n"
+                "))")
+        nodes = get_nodes(code, ast.Tuple)
+        tup = nodes[0]
+        self.assertEqual(tup.first_line, 2)
+        self.assertEqual(tup.first_col, 2)
+        self.assertEqual(tup.last_line, 4)
+        self.assertEqual(tup.last_col, 1)
+        self.assertEqual(tup.uid, (2, 5))
+
+    def test_tuple4(self):
+        code = ("#bla\n"
+                "1,")
+        nodes = get_nodes(code, ast.Tuple)
+        tup = nodes[0]
+        self.assertEqual(tup.first_line, 2)
+        self.assertEqual(tup.first_col, 0)
+        self.assertEqual(tup.last_line, 2)
+        self.assertEqual(tup.last_col, 1)
+        self.assertEqual(tup.uid, (2, 1))
+
+    def test_tuple5(self):
+        code = ("#bla\n"
+                "([1, 2], 3)")
+        nodes = get_nodes(code, ast.Tuple)
+        tup = nodes[0]
+        self.assertEqual(tup.first_line, 2)
+        self.assertEqual(tup.first_col, 1)
+        self.assertEqual(tup.last_line, 2)
+        self.assertEqual(tup.last_col, 10)
+        self.assertEqual(tup.uid, (2, 7))
+
+    def test_list(self):
+        code = ("#bla\n"
+                "[\n"
+                "1, 2,\n"
+                "3\n"
+                "]")
+        nodes = get_nodes(code, ast.List)
+        lis = nodes[0]
+        self.assertEqual(lis.first_line, 2)
+        self.assertEqual(lis.first_col, 0)
+        self.assertEqual(lis.last_line, 5)
+        self.assertEqual(lis.last_col, 1)
+        self.assertEqual(lis.uid, (5, 1))
+
+    def test_list2(self):
+        code = ("#bla\n"
+                "[\n"
+                "]")
+
+        nodes = get_nodes(code, ast.List)
+        lis = nodes[0]
+        self.assertEqual(lis.first_line, 2)
+        self.assertEqual(lis.first_col, 0)
+        self.assertEqual(lis.last_line, 3)
+        self.assertEqual(lis.last_col, 1)
+        self.assertEqual(lis.uid, (3, 1))
+
+    def test_list3(self):
+        code = ("#bla\n"
+                "([(0),\n"
+                "1, 2,\n"
+                "3\n"
+                "])")
+        nodes = get_nodes(code, ast.List)
+        lis = nodes[0]
+        self.assertEqual(lis.first_line, 2)
+        self.assertEqual(lis.first_col, 1)
+        self.assertEqual(lis.last_line, 5)
+        self.assertEqual(lis.last_col, 1)
+        self.assertEqual(lis.uid, (5, 1))
+
+    @only_python2
+    def test_repr(self):
+        code = ("#bla\n"
+                "`1`")
+        nodes = get_nodes(code, ast.Repr)
+        rep = nodes[0]
+        self.assertEqual(rep.first_line, 2)
+        self.assertEqual(rep.first_col, 0)
+        self.assertEqual(rep.last_line, 2)
+        self.assertEqual(rep.last_col, 3)
+        self.assertEqual(rep.uid, (2, 3))
+
+    @only_python2
+    def test_repr2(self):
+        code = ("#bla\n"
+                "``1``")
+        nodes = get_nodes(code, ast.Repr)
+        rep = nodes[0]
+        self.assertEqual(rep.first_line, 2)
+        self.assertEqual(rep.first_col, 0)
+        self.assertEqual(rep.last_line, 2)
+        self.assertEqual(rep.last_col, 5)
+        self.assertEqual(rep.uid, (2, 5))
+
+    @only_python2
+    def test_repr3(self):
+        code = ("#bla\n"
+                "``2\\\n"
+                "``")
+        nodes = get_nodes(code, ast.Repr)
+        rep = nodes[0]
+        self.assertEqual(rep.first_line, 2)
+        self.assertEqual(rep.first_col, 0)
+        self.assertEqual(rep.last_line, 3)
+        self.assertEqual(rep.last_col, 2)
+        self.assertEqual(rep.uid, (3, 2))
+
+    def test_call(self):
+        code = ("#bla\n"
+                "fn(\n"
+                "2)")
+        nodes = get_nodes(code, ast.Call)
+        call = nodes[0]
+        self.assertEqual(call.first_line, 2)
+        self.assertEqual(call.first_col, 0)
+        self.assertEqual(call.last_line, 3)
+        self.assertEqual(call.last_col, 2)
+        self.assertEqual(call.uid, (3, 2))
+
+    def test_call2(self):
+        code = ("#bla\n"
+                "fn(\n"
+                "2)")
+        nodes = get_nodes(code, ast.Call)
+        call = nodes[0]
+        self.assertEqual(call.first_line, 2)
+        self.assertEqual(call.first_col, 0)
+        self.assertEqual(call.last_line, 3)
+        self.assertEqual(call.last_col, 2)
+        self.assertEqual(call.uid, (3, 2))
+
+    def test_call3(self):
+        code = ("#bla\n"
+                "fn\\\n"
+                "((\n"
+                "2, 3))")
+        nodes = get_nodes(code, ast.Call)
+        call = nodes[0]
+        self.assertEqual(call.first_line, 2)
+        self.assertEqual(call.first_col, 0)
+        self.assertEqual(call.last_line, 4)
+        self.assertEqual(call.last_col, 6)
+        self.assertEqual(call.uid, (4, 6))
+
+    def test_call4(self):
+        code = ("#bla\n"
+                "fn()\\\n"
+                "((\n"
+                "2, 3))")
+        nodes = get_nodes(code, ast.Call)
+        call = nodes[0]
+        self.assertEqual(call.first_line, 2)
+        self.assertEqual(call.first_col, 0)
+        self.assertEqual(call.last_line, 4)
+        self.assertEqual(call.last_col, 6)
+        self.assertEqual(call.uid, (4, 6))
+        call2 = nodes[1]
+        self.assertEqual(call2.first_line, 2)
+        self.assertEqual(call2.first_col, 0)
+        self.assertEqual(call2.last_line, 2)
+        self.assertEqual(call2.last_col, 4)
+        self.assertEqual(call2.uid, (2, 4))
+
+    def test_compare(self):
+        code = ("#bla\n"
+                "2 < 3")
+        nodes = get_nodes(code, ast.Compare)
+        compare = nodes[0]
+        self.assertEqual(compare.first_line, 2)
+        self.assertEqual(compare.first_col, 0)
+        self.assertEqual(compare.last_line, 2)
+        self.assertEqual(compare.last_col, 5)
+        self.assertEqual(compare.uid, (2, 5))
+
+    def test_compare2(self):
+        code = ("#bla\n"
+                "2 < 3 <\\\n"
+                " 5")
+        nodes = get_nodes(code, ast.Compare)
+        compare = nodes[0]
+        self.assertEqual(compare.first_line, 2)
+        self.assertEqual(compare.first_col, 0)
+        self.assertEqual(compare.last_line, 3)
+        self.assertEqual(compare.last_col, 2)
+        self.assertEqual(compare.uid, (3, 2))
+
+    def test_eq(self):
+        code = ("#bla\n"
+                "2 == 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+
+    def test_not_eq(self):
+        code = ("#bla\n"
+                "2 != 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+
+    def test_not_eq2(self):
+        """ Python 2 syntax """
+        code = ("#bla\n"
+                "2 != 4\n"
+                "5 != 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+        comp2 = nodes[1].op_pos[0]
+        self.assertEqual(comp2.first_line, 3)
+        self.assertEqual(comp2.first_col, 2)
+        self.assertEqual(comp2.last_line, 3)
+        self.assertEqual(comp2.last_col, 4)
+        self.assertEqual(comp2.uid, (3, 4))
+
+    @only_python2
+    def test_not_eq3(self):
+        """ Python 2 syntax """
+        code = ("#bla\n"
+                "2 <> 4\n"
+                "5 != 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+        comp2 = nodes[1].op_pos[0]
+        self.assertEqual(comp2.first_line, 3)
+        self.assertEqual(comp2.first_col, 2)
+        self.assertEqual(comp2.last_line, 3)
+        self.assertEqual(comp2.last_col, 4)
+        self.assertEqual(comp2.uid, (3, 4))
+
+    def test_lt(self):
+        code = ("#bla\n"
+                "2 < 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 3)
+        self.assertEqual(comp.uid, (2, 3))
+
+    def test_lte(self):
+        code = ("#bla\n"
+                "2 <= 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+
+    def test_gt(self):
+        code = ("#bla\n"
+                "2 > 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 3)
+        self.assertEqual(comp.uid, (2, 3))
+
+    def test_gte(self):
+        code = ("#bla\n"
+                "2 >= 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+
+    def test_is(self):
+        code = ("#bla\n"
+                "2 is 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+
+    def test_is_not(self):
+        code = ("#bla\n"
+                "2 is not 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 8)
+        self.assertEqual(comp.uid, (2, 8))
+
+    def test_in(self):
+        code = ("#bla\n"
+                "2 in 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 4)
+        self.assertEqual(comp.uid, (2, 4))
+
+    def test_not_in(self):
+        code = ("#bla\n"
+                "2 not in 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertEqual(comp.first_line, 2)
+        self.assertEqual(comp.first_col, 2)
+        self.assertEqual(comp.last_line, 2)
+        self.assertEqual(comp.last_col, 8)
+        self.assertEqual(comp.uid, (2, 8))
 
 if __name__ == '__main__':
     unittest.main()
+
+#ToDO: test_tuple3
 
