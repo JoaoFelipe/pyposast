@@ -34,6 +34,19 @@ def only_python2(fn):
 
 class TestProvenanceVisitor(unittest.TestCase):
 
+    def assertPosition(self, node, first, last, uid):
+        node_first = (node.first_line, node.first_col)
+        node_last = (node.last_line, node.last_col)
+        if not node_first == first:
+            raise AssertionError(
+                'first does not match: {} != {}'.format(node_first, first))
+        if not node_last == last:
+            raise AssertionError(
+                'last does not match: {} != {}'.format(node_last, last))
+        if not node.uid == uid:
+            raise AssertionError(
+                'uid does not match: {} != {}'.format(node.uid, uid))
+
     def test_name(self):
         code = ("#bla\n"
                 "abc")
@@ -490,24 +503,24 @@ class TestProvenanceVisitor(unittest.TestCase):
         code = ("#bla\n"
                 "`1`")
         nodes = get_nodes(code, ast.Repr)
-        rep = nodes[0]
-        self.assertEqual(rep.first_line, 2)
-        self.assertEqual(rep.first_col, 0)
-        self.assertEqual(rep.last_line, 2)
-        self.assertEqual(rep.last_col, 3)
-        self.assertEqual(rep.uid, (2, 3))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 2)
+        self.assertEqual(expr.last_col, 3)
+        self.assertEqual(expr.uid, (2, 3))
 
     @only_python2
     def test_repr2(self):
         code = ("#bla\n"
                 "``1``")
         nodes = get_nodes(code, ast.Repr)
-        rep = nodes[0]
-        self.assertEqual(rep.first_line, 2)
-        self.assertEqual(rep.first_col, 0)
-        self.assertEqual(rep.last_line, 2)
-        self.assertEqual(rep.last_col, 5)
-        self.assertEqual(rep.uid, (2, 5))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 2)
+        self.assertEqual(expr.last_col, 5)
+        self.assertEqual(expr.uid, (2, 5))
 
     @only_python2
     def test_repr3(self):
@@ -515,36 +528,36 @@ class TestProvenanceVisitor(unittest.TestCase):
                 "``2\\\n"
                 "``")
         nodes = get_nodes(code, ast.Repr)
-        rep = nodes[0]
-        self.assertEqual(rep.first_line, 2)
-        self.assertEqual(rep.first_col, 0)
-        self.assertEqual(rep.last_line, 3)
-        self.assertEqual(rep.last_col, 2)
-        self.assertEqual(rep.uid, (3, 2))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 3)
+        self.assertEqual(expr.last_col, 2)
+        self.assertEqual(expr.uid, (3, 2))
 
     def test_call(self):
         code = ("#bla\n"
                 "fn(\n"
                 "2)")
         nodes = get_nodes(code, ast.Call)
-        call = nodes[0]
-        self.assertEqual(call.first_line, 2)
-        self.assertEqual(call.first_col, 0)
-        self.assertEqual(call.last_line, 3)
-        self.assertEqual(call.last_col, 2)
-        self.assertEqual(call.uid, (3, 2))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 3)
+        self.assertEqual(expr.last_col, 2)
+        self.assertEqual(expr.uid, (3, 2))
 
     def test_call2(self):
         code = ("#bla\n"
                 "fn(\n"
                 "2)")
         nodes = get_nodes(code, ast.Call)
-        call = nodes[0]
-        self.assertEqual(call.first_line, 2)
-        self.assertEqual(call.first_col, 0)
-        self.assertEqual(call.last_line, 3)
-        self.assertEqual(call.last_col, 2)
-        self.assertEqual(call.uid, (3, 2))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 3)
+        self.assertEqual(expr.last_col, 2)
+        self.assertEqual(expr.uid, (3, 2))
 
     def test_call3(self):
         code = ("#bla\n"
@@ -552,12 +565,12 @@ class TestProvenanceVisitor(unittest.TestCase):
                 "((\n"
                 "2, 3))")
         nodes = get_nodes(code, ast.Call)
-        call = nodes[0]
-        self.assertEqual(call.first_line, 2)
-        self.assertEqual(call.first_col, 0)
-        self.assertEqual(call.last_line, 4)
-        self.assertEqual(call.last_col, 6)
-        self.assertEqual(call.uid, (4, 6))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 6)
+        self.assertEqual(expr.uid, (4, 6))
 
     def test_call4(self):
         code = ("#bla\n"
@@ -565,41 +578,41 @@ class TestProvenanceVisitor(unittest.TestCase):
                 "((\n"
                 "2, 3))")
         nodes = get_nodes(code, ast.Call)
-        call = nodes[0]
-        self.assertEqual(call.first_line, 2)
-        self.assertEqual(call.first_col, 0)
-        self.assertEqual(call.last_line, 4)
-        self.assertEqual(call.last_col, 6)
-        self.assertEqual(call.uid, (4, 6))
-        call2 = nodes[1]
-        self.assertEqual(call2.first_line, 2)
-        self.assertEqual(call2.first_col, 0)
-        self.assertEqual(call2.last_line, 2)
-        self.assertEqual(call2.last_col, 4)
-        self.assertEqual(call2.uid, (2, 4))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 6)
+        self.assertEqual(expr.uid, (4, 6))
+        expr = nodes[1]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 2)
+        self.assertEqual(expr.last_col, 4)
+        self.assertEqual(expr.uid, (2, 4))
 
     def test_compare(self):
         code = ("#bla\n"
                 "2 < 3")
         nodes = get_nodes(code, ast.Compare)
-        compare = nodes[0]
-        self.assertEqual(compare.first_line, 2)
-        self.assertEqual(compare.first_col, 0)
-        self.assertEqual(compare.last_line, 2)
-        self.assertEqual(compare.last_col, 5)
-        self.assertEqual(compare.uid, (2, 5))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 2)
+        self.assertEqual(expr.last_col, 5)
+        self.assertEqual(expr.uid, (2, 5))
 
     def test_compare2(self):
         code = ("#bla\n"
                 "2 < 3 <\\\n"
                 " 5")
         nodes = get_nodes(code, ast.Compare)
-        compare = nodes[0]
-        self.assertEqual(compare.first_line, 2)
-        self.assertEqual(compare.first_col, 0)
-        self.assertEqual(compare.last_line, 3)
-        self.assertEqual(compare.last_col, 2)
-        self.assertEqual(compare.uid, (3, 2))
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 3)
+        self.assertEqual(expr.last_col, 2)
+        self.assertEqual(expr.uid, (3, 2))
 
     def test_eq(self):
         code = ("#bla\n"
@@ -749,6 +762,120 @@ class TestProvenanceVisitor(unittest.TestCase):
         self.assertEqual(comp.last_line, 2)
         self.assertEqual(comp.last_col, 8)
         self.assertEqual(comp.uid, (2, 8))
+
+    def test_yield(self):
+        code = ("#bla\n"
+                "yield   2")
+        nodes = get_nodes(code, ast.Yield)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 2)
+        self.assertEqual(expr.last_col, 9)
+        self.assertEqual(expr.uid, (2, 5))
+
+    def test_comprehension(self):
+        code = ("#bla\n"
+                "[x\n"
+                " for x in l\n"
+                " if x]")
+        nodes = get_nodes(code, ast.comprehension)
+        comprehension = nodes[0]
+        self.assertEqual(comprehension.first_line, 3)
+        self.assertEqual(comprehension.first_col, 1)
+        self.assertEqual(comprehension.last_line, 4)
+        self.assertEqual(comprehension.last_col, 5)
+        self.assertEqual(comprehension.uid, (3, 4))
+
+    def test_generator_exp(self):
+        code = ("#bla\n"
+                "f(x\n"
+                " for x in l\n"
+                " if x)")
+        nodes = get_nodes(code, ast.GeneratorExp)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 2)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 5)
+        self.assertEqual(expr.uid, (2, 3))
+
+    def test_dict_comp(self):
+        code = ("#bla\n"
+                "{x:2\n"
+                " for x in l\n"
+                " if x}")
+        nodes = get_nodes(code, ast.DictComp)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 6)
+        self.assertEqual(expr.uid, (4, 6))
+
+    def test_set_comp(self):
+        code = ("#bla\n"
+                "{x\n"
+                " for x in l\n"
+                " if x}")
+        nodes = get_nodes(code, ast.SetComp)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 6)
+        self.assertEqual(expr.uid, (4, 6))
+
+    def test_list_comp(self):
+        code = ("#bla\n"
+                "[x\n"
+                " for x in l\n"
+                " if x]")
+        nodes = get_nodes(code, ast.ListComp)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 6)
+        self.assertEqual(expr.uid, (4, 6))
+
+    def test_set(self):
+        code = ("#bla\n"
+                "{x,\n"
+                " 1,\n"
+                " 3}")
+        nodes = get_nodes(code, ast.Set)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 3)
+        self.assertEqual(expr.uid, (4, 3))
+
+    def test_dict(self):
+        code = ("#bla\n"
+                "{}")
+        nodes = get_nodes(code, ast.Dict)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 0)
+        self.assertEqual(expr.last_line, 2)
+        self.assertEqual(expr.last_col, 2)
+        self.assertEqual(expr.uid, (2, 2))
+
+    def test_dict2(self):
+        code = ("#bla\n"
+                "{1}, {1: x,\n"
+                "  2: 1,\n"
+                "  3: 3}")
+        nodes = get_nodes(code, ast.Dict)
+        expr = nodes[0]
+        self.assertEqual(expr.first_line, 2)
+        self.assertEqual(expr.first_col, 5)
+        self.assertEqual(expr.last_line, 4)
+        self.assertEqual(expr.last_col, 7)
+        self.assertEqual(expr.uid, (4, 7))
+
 
 if __name__ == '__main__':
     unittest.main()
