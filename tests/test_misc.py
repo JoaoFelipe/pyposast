@@ -1,0 +1,325 @@
+from __future__ import (absolute_import, division, unicode_literals)
+
+import ast
+
+from .utils import get_nodes, NodeTestCase, only_python2, only_python3
+
+
+class TestMisc(NodeTestCase):
+
+    def test_index(self):
+        code = ("#bla\n"
+                "a[1]")
+        nodes = get_nodes(code, ast.Index)
+        self.assertPosition(nodes[0], (2, 2), (2, 3), (2, 3))
+
+    def test_slice(self):
+        code = ("#bla\n"
+                "a[1:2:3]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 7), (2, 4))
+
+    def test_slice2(self):
+        code = ("#bla\n"
+                "a[:\\\n"
+                "2:3]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (3, 3), (2, 3))
+
+    def test_slice3(self):
+        code = ("#bla\n"
+                "a[:\\\n"
+                ":2]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (3, 2), (2, 3))
+
+    def test_slice4(self):
+        code = ("#bla\n"
+                "a[:]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 3), (2, 3))
+
+    def test_slice5(self):
+        code = ("#bla\n"
+                "a[::]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 4), (2, 3))
+
+    def test_slice6(self):
+        code = ("#bla\n"
+                "a[11:2\\\n"
+                ":]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (3, 1), (2, 5))
+
+    def test_slice7(self):
+        code = ("#bla\n"
+                "a[::None]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 3))
+
+    def test_ext_slice(self):
+        code = ("#bla\n"
+                "a[1:2,3]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        self.assertPosition(nodes[0], (2, 2), (2, 7), (2, 6))
+
+    def test_ext_slice2(self):
+        code = ("#bla\n"
+                "a[1:2:,3]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 7))
+
+    def test_ext_slice2(self):
+        code = ("#bla\n"
+                "a[3,1:2:]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 4))
+
+    def test_eq(self):
+        code = ("#bla\n"
+                "2 == 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+
+    def test_not_eq(self):
+        code = ("#bla\n"
+                "2 != 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+
+    def test_not_eq2(self):
+        """ Python 2 syntax """
+        code = ("#bla\n"
+                "2 != 4\n"
+                "5 != 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+        comp2 = nodes[1].op_pos[0]
+        self.assertPosition(comp2, (3, 2), (3, 4), (3, 4))
+
+    @only_python2
+    def test_not_eq3(self):
+        """ Python 2 syntax """
+        code = ("#bla\n"
+                "2 <> 4\n"
+                "5 != 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+        comp2 = nodes[1].op_pos[0]
+        self.assertPosition(comp2, (3, 2), (3, 4), (3, 4))
+
+    def test_lt(self):
+        code = ("#bla\n"
+                "2 < 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 3), (2, 3))
+
+    def test_lte(self):
+        code = ("#bla\n"
+                "2 <= 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+
+    def test_gt(self):
+        code = ("#bla\n"
+                "2 > 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 3), (2, 3))
+
+    def test_gte(self):
+        code = ("#bla\n"
+                "2 >= 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+
+    def test_is(self):
+        code = ("#bla\n"
+                "2 is 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+
+    def test_is_not(self):
+        code = ("#bla\n"
+                "2 is not 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 8), (2, 8))
+
+    def test_in(self):
+        code = ("#bla\n"
+                "2 in 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
+
+    def test_not_in(self):
+        code = ("#bla\n"
+                "2 not in 4")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 2), (2, 8), (2, 8))
+
+    def test_comprehension(self):
+        code = ("#bla\n"
+                "[x\n"
+                " for x in l\n"
+                " if x]")
+        nodes = get_nodes(code, ast.comprehension)
+        self.assertPosition(nodes[0], (3, 1), (4, 5), (3, 4))
+
+    @only_python3
+    def test_arg(self):
+        code = ("#bla\n"
+                "def f(x: 'a', y):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arg)
+        self.assertPosition(nodes[0], (2, 6), (2, 12), (2, 12))
+        self.assertPosition(nodes[1], (2, 14), (2, 15), (2, 15))
+
+    def test_arguments(self):
+        code = ("#bla\n"
+                "lambda x, y=2, *z, **w : x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 7), (2, 22), (2, 22))
+
+    @only_python3
+    def test_arguments2(self):
+        code = ("#bla\n"
+                "lambda x, *, y=2: x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 7), (2, 16), (2, 16))
+
+    def test_arguments3(self):
+        code = ("#bla\n"
+                "lambda  : 2")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 8), (2, 8), (2, 8))
+
+    def test_invert(self):
+        code = ("#bla\n"
+                "~a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 1), (2, 1))
+
+    def test_not(self):
+        code = ("#bla\n"
+                "not a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 3), (2, 3))
+
+    def test_usub(self):
+        code = ("#bla\n"
+                "-a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 1), (2, 1))
+
+    def test_uadd(self):
+        code = ("#bla\n"
+                "+a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 1), (2, 1))
+
+    def test_add(self):
+        code = ("#bla\n"
+                "a + a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_sub(self):
+        code = ("#bla\n"
+                "a - a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_mult(self):
+        code = ("#bla\n"
+                "a * a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_div(self):
+        code = ("#bla\n"
+                "a / a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_mod(self):
+        code = ("#bla\n"
+                "a % a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_pow(self):
+        code = ("#bla\n"
+                "a ** a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_lshift(self):
+        code = ("#bla\n"
+                "a << a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_rshift(self):
+        code = ("#bla\n"
+                "a >> a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_bitor(self):
+        code = ("#bla\n"
+                "a | a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_bitand(self):
+        code = ("#bla\n"
+                "a & a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_floordiv(self):
+        code = ("#bla\n"
+                "a // a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_and(self):
+        code = ("#bla\n"
+                "a and b")
+        nodes = get_nodes(code, ast.BoolOp)
+        op = nodes[0].op_pos[0]
+        self.assertPosition(op, (2, 2), (2, 5), (2, 5))
+
+    def test_or(self):
+        code = ("#bla\n"
+                "a or b")
+        nodes = get_nodes(code, ast.BoolOp)
+        op = nodes[0].op_pos[0]
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
