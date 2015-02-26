@@ -1,4 +1,5 @@
 import ast
+import sys
 import tokenize
 import bisect
 
@@ -19,6 +20,19 @@ def pairwise(iterable):
         yield (a, b)
         a = b
 
+def only_python2(fn):
+    def decorator(*args, **kwargs):
+        if sys.version_info < (3, 0):
+            return fn(*args, **kwargs)
+        return None
+    return decorator
+
+def only_python3(fn):
+    def decorator(*args, **kwargs):
+        if sys.version_info >= (3, 0):
+            return fn(*args, **kwargs)
+        return None
+    return decorator
 
 class ElementDict(OrderedDict):
 
@@ -74,7 +88,8 @@ class NodeWithPosition(object):
         self.first_line, self.first_col = first
         self.uid = self.last_line, self.last_col = last
 
-KEYWORDS = ('and', 'or', 'for', 'if', 'lambda')
+WHITESPACE = ('\\', '\r', ' ', '\t')
+KEYWORDS = ('and', 'or', 'for', 'if', 'lambda', 'None')
 COMBINED_KEYWORDS = ('is not', 'yield from', 'not in')
 FUTURE_KEYWORDS = ('is', 'yield', 'not')
 PAST_KEYWORKDS = {
@@ -201,6 +216,13 @@ def copy_info(node_to, node_from):
     node_to.last_col = node_from.last_col
     node_to.uid = node_from.uid
 
+def copy_from_lineno_col_offset(node, identifier):
+    node.first_line, node.first_col = node.lineno, node.col_offset
+    node.last_line = node.lineno
+    len_id = len(identifier)
+    node.last_col = node.col_offset + len_id
+    node.uid = (node.last_line, node.last_col)
+
 def set_pos(node, first, last):
     node.first_line, node.first_col = first
     node.uid = node.last_line, node.last_col = last
@@ -229,12 +251,6 @@ def r_set_previous_element(node, previous, element_dict):
     position = (previous.first_line, previous.first_col)
     r_set_pos(node, *element_dict.find_previous(position))
 
-def visit_all(fn):
-    def decorator(self, node):
-        result = self.generic_visit(node)
-        fn(self, node)
-        return result
-    return decorator
 
 
 class LineCol(object):
@@ -242,6 +258,7 @@ class LineCol(object):
     def __init__(self, code, line, col):
         self.code = code
         self.line, self.col = line, col
+        self.adjust()
 
     def char(self):
         return self.code[self.line - 1][self.col]
@@ -255,8 +272,24 @@ class LineCol(object):
     def dec(self):
         self.col -= 1
         if self.col == -1:
-            self.col = len(self.code[self.line - 2])
+            self.col = len(self.code[self.line - 2]) - 1
             self.line -= 1
+
+    def adjust(self):
+        if len(self.code[self.line - 1]) == self.col:
+            self.col = 0
+            self.line += 1
+        if self.col == -1:
+            self.col = len(self.code[self.line - 2]) - 1
+            self.line -= 1
+
+    @property
+    def eof(self):
+        return self.line >= len(self.code) and self.col >= len(self.code[-1])
+
+    @property
+    def bof(self):
+        return self.line <= 0 and self.col <= 0
 
     def tuple(self):
         return (self.line, self.col)
@@ -267,24 +300,93 @@ class LineCol(object):
     def __eq__(self, other):
         return self.tuple() == other.tuple()
 
+    def __repr__(self):
+        return str(self.tuple())
+
+
+def inc_tuple(tup):
+    return (tup[0], tup[1] + 1)
+
+
+def dec_tuple(tup):
+    return (tup[0], tup[1] - 1)
+
 
 def position_between(code, position1, position2):
-    code = code.split('\n')
     if position1 > position2:
         position1, position2 = position2, position1
     p1, p2 = LineCol(code, *position1), LineCol(code, *position2)
     start = LineCol(code, *position1)
-    while start < p2 and start.char() in ('\\', '\r', ' ', '\t'):
+    while start < p2 and start.char() in WHITESPACE:
         start.inc()
-    end = LineCol(code, position2[0], position2[1] - 1)
-    while end > p1 and end.char() in ('\\', '\r', ' ', '\t'):
+    end = LineCol(code, *dec_tuple(position2))
+    while end > p1 and end.char() in WHITESPACE:
         end.dec()
     if end > p1:
         end.inc()
+    if end == start:
+        return position1, position2
     if start > end:
         tup = start.tuple()
         return tup, tup
     return start.tuple(), end.tuple()
+
+def update_expr_parenthesis(code, parenthesis, node):
+
+    position = (node.first_line, node.first_col)
+    try:
+        p1, p2 = parenthesis.find_previous(position)
+    except IndexError:
+        return
+    if not p1 < position < p2:
+        return
+    p1, p2 = LineCol(code, *p1), LineCol(code, *dec_tuple(p2))
+
+    start = LineCol(code, node.first_line, node.first_col)
+    end = LineCol(code, node.last_line, node.last_col)
+    start.dec()
+
+    while start > p1 and not start.bof and start.char() in WHITESPACE:
+        start.dec()
+
+    while end < p2 and not end.eof and end.char() in WHITESPACE:
+        end.inc()
+
+    if start == p1 and end == p2:
+        end_tuple = inc_tuple(end.tuple())
+        node.first_line, node.first_col = start.tuple()
+        if node.uid == (node.last_line, node.last_col):
+            node.uid = end_tuple
+        node.last_line, node.last_col = end_tuple
+
+        update_expr_parenthesis(code, parenthesis, node)
+
+def increment_node_position(code, node):
+    first = (node.first_line, node.first_col)
+    last = (node.last_line, node.last_col)
+    p1, p2 = LineCol(code, *first), LineCol(code, *last)
+    p1.inc()
+    p2.dec()
+    start, end = position_between(code, p1.tuple(), p2.tuple())
+    node.first_line, node.first_col = start
+    if node.uid == (node.last_line, node.last_col):
+        node.uid = end
+    (node.last_line, node.last_col) = end
+
+def visit_all(fn):
+    def decorator(self, node):
+        result = self.generic_visit(node)
+        fn(self, node)
+        return result
+    return decorator
+
+def visit_expr(fn):
+    def decorator(self, node):
+        result = self.generic_visit(node)
+        fn(self, node)
+        update_expr_parenthesis(self.lcode, self.parenthesis, node)
+        return result
+    return decorator
 
 
 class ProvenanceVisitor(ast.NodeVisitor):
@@ -292,6 +394,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
     def __init__(self, code, path):
         self.tree = ast.parse(code, path)
         self.code = code
+        self.lcode = code.split('\n')
         tokens, self.operators = extract_tokens(code)
         self.parenthesis = tokens[0]
         self.sbrackets = tokens[1]
@@ -332,16 +435,11 @@ class ProvenanceVisitor(ast.NodeVisitor):
             *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
         )
 
-    @visit_all
+    @visit_expr
     def visit_Name(self, node):
-        node.first_line = node.lineno
-        node.first_col = node.col_offset
-        node.last_line = node.lineno
-        len_id = len(node.id) if node.id != 'None' else 1
-        node.last_col = node.col_offset + len_id
-        node.uid = (node.last_line, node.last_col)
+        copy_from_lineno_col_offset(node, node.id)
 
-    @visit_all
+    @visit_expr
     def visit_Num(self, node):
         node.first_line = node.lineno
         node.first_col = node.col_offset
@@ -350,12 +448,12 @@ class ProvenanceVisitor(ast.NodeVisitor):
         node.last_line, node.last_col = self.numbers.find_next(position)[0]
         node.uid = (node.last_line, node.last_col)
 
-    @visit_all
+    @visit_expr
     def visit_Str(self, node):
         position = (node.lineno, node.col_offset)
         r_set_pos(node, *self.strings.find_next(position))
 
-    @visit_all
+    @visit_expr
     def visit_Attribute(self, node):
         position = (node.value.last_line, node.value.last_col + len(node.attr))
         r_set_pos(node, *self.attributes.find_next(position))
@@ -367,7 +465,8 @@ class ProvenanceVisitor(ast.NodeVisitor):
     def visit_Index(self, node):
         copy_info(node, node.value)
 
-    @visit_all
+    @only_python3
+    @visit_expr
     def visit_Ellipsis(self, node):
         if 'lineno' in dir(node):
             """ Python 3 """
@@ -377,11 +476,24 @@ class ProvenanceVisitor(ast.NodeVisitor):
     @visit_all
     def visit_Slice(self, node):
         set_max_position(node)
-        node.children = [node.lower, node.upper, node.step]
+        children = [node.lower, node.upper, node.step]
+        node.children = [x for x in children if x]
+
+        if isinstance(node.step, ast.Name) and node.step.id == 'None':
+            position = (node.step.first_line, node.step.first_col - 1)
+            empty_none = True
+            try:
+                last, first = self.operators['None'].find_next(position)
+                if first == (node.step.first_line, node.step.first_col):
+                    empty_none = False
+            except KeyError:
+                pass
+            if empty_none:
+                node.step.last_col = node.step.col_offset + 1
+                node.step.uid = (node.step.last_line, node.step.last_col)
 
         for sub_node in node.children:
-            if sub_node:
-                min_first_max_last(node, sub_node)
+            min_first_max_last(node, sub_node)
 
     def process_slice(self, the_slice, previous):
         if isinstance(the_slice, ast.Ellipsis):
@@ -414,7 +526,6 @@ class ProvenanceVisitor(ast.NodeVisitor):
             the_slice.uid = (the_slice.dims[0].last_line,
                              the_slice.dims[0].last_col + 1)
 
-
     def post_process_slice(self, previous, position):
         if isinstance(previous, ast.ExtSlice):
             self.post_process_slice(previous.dims[-1], position)
@@ -423,8 +534,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
             if new_position > (previous.last_line, previous.last_col):
                 previous.last_line, previous.last_col = new_position
 
-
-    @visit_all
+    @visit_expr
     def visit_Subscript(self, node):
         self.process_slice(node.slice, node.value)
         position = (node.value.last_line, node.value.last_col)
@@ -433,7 +543,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
         node.first_col = node.value.first_col
         self.post_process_slice(node.slice, node.uid)
 
-    @visit_all
+    @visit_expr
     def visit_Tuple(self, node):
         if not node.elts:
         # nprint(node)
@@ -447,12 +557,12 @@ class ProvenanceVisitor(ast.NodeVisitor):
             for elt in node.elts:
                 min_first_max_last(node, elt)
 
-    @visit_all
+    @visit_expr
     def visit_List(self, node):
         position = (node.lineno, node.col_offset)
         set_pos(node, *self.sbrackets.find_previous(position))
 
-    @visit_all
+    @visit_expr
     def visit_Repr(self, node):
         """ Python 2 """
         position = (node.value.last_line, node.value.last_col + 1)
@@ -461,14 +571,19 @@ class ProvenanceVisitor(ast.NodeVisitor):
         first = self.operators['`'].find_previous(position)[1]
         node.first_line, node.first_col = first
 
-    @visit_all
+    @visit_expr
     def visit_Call(self, node):
         copy_info(node, node.func)
         position = (node.last_line, node.last_col)
         last = self.parenthesis.find_next(position)[1]
         node.uid = node.last_line, node.last_col = last
+        children = [node.starargs, node.kwargs]
+        children += node.args + node.keywords
+        children = [x for x in children if x]
+        if len(children) == 1 and isinstance(children[0], ast.expr):
+            increment_node_position(self.lcode, children[0])
 
-    @visit_all
+    @visit_expr
     def visit_Compare(self, node):
         node.op_pos = []
         set_max_position(node)
@@ -485,7 +600,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
 
         node.uid = node.last_line, node.last_col
 
-    @visit_all
+    @visit_expr
     def visit_Yield(self, node):
         copy_info(node, node.value)
         position = (node.lineno, node.col_offset)
@@ -500,7 +615,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
         for eif in node.ifs:
             min_first_max_last(node, eif)
 
-    @visit_all
+    @visit_expr
     def visit_GeneratorExp(self, node):
         set_max_position(node)
         min_first_max_last(node, node.elt)
@@ -508,28 +623,28 @@ class ProvenanceVisitor(ast.NodeVisitor):
             min_first_max_last(node, generator)
         node.uid = node.elt.last_line, node.elt.last_col
 
-    @visit_all
+    @visit_expr
     def visit_DictComp(self, node):
         set_previous_element(node, node.key, self.brackets)
 
-    @visit_all
+    @visit_expr
     def visit_SetComp(self, node):
         set_previous_element(node, node.elt, self.brackets)
 
-    @visit_all
+    @visit_expr
     def visit_ListComp(self, node):
         set_previous_element(node, node.elt, self.sbrackets)
 
-    @visit_all
+    @visit_expr
     def visit_Set(self, node):
         set_previous_element(node, node.elts[0], self.brackets)
 
-    @visit_all
+    @visit_expr
     def visit_Dict(self, node):
         position = (node.lineno, node.col_offset + 1)
         set_pos(node, *self.brackets.find_previous(position))
 
-    @visit_all
+    @visit_expr
     def visit_IfExp(self, node):
         set_max_position(node)
         min_first_max_last(node, node.body)
@@ -537,7 +652,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
         position = (node.test.first_line, node.test.first_col + 1)
         node.uid = self.operators['if'].find_previous(position)[0]
 
-    @visit_all
+    @visit_expr
     def visit_Lambda(self, node):
         copy_info(node, node.body)
         position = (node.body.first_line, node.body.first_col + 1)
@@ -546,7 +661,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
         node.first_line, node.first_col = first
 
         args = node.args
-        arg_position = position_between(self.code, after_lambda, before_colon)
+        arg_position = position_between(self.lcode, after_lambda, before_colon)
         args.first_line, args.first_col = arg_position[0]
         args.uid = args.last_line, args.last_col = arg_position[1]
 
@@ -579,14 +694,14 @@ class ProvenanceVisitor(ast.NodeVisitor):
                 min_first_max_last(node, arg)
             node.uid = (node.last_line, node.last_col)
 
-    @visit_all
+    @visit_expr
     def visit_UnaryOp(self, node):
         # Cannot set to the unaryop node as they are singletons
         node.op_pos = self.calculate_unaryop(node.op, node.operand)
         copy_info(node, node.op_pos)
         min_first_max_last(node, node.operand)
 
-    @visit_all
+    @visit_expr
     def visit_BinOp(self, node):
         set_max_position(node)
         min_first_max_last(node, node.left)
@@ -594,7 +709,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
         node.op_pos = self.calculate_infixop(node.op, node.left, node.right)
         node.uid = node.op_pos.uid
 
-    @visit_all
+    @visit_expr
     def visit_BoolOp(self, node):
         node.op_pos = []
         set_max_position(node)
@@ -610,3 +725,27 @@ class ProvenanceVisitor(ast.NodeVisitor):
             previous = value
 
         node.uid = node.last_line, node.last_col
+
+    @visit_expr
+    def visit_Starred(self, node):
+        """ Python 3 """
+        r_set_previous_element(node, node.value, self.operators['*'])
+        last = node.value
+        node.last_line, node.last_col = last.last_line, last.last_col
+
+    @visit_expr
+    def visit_NameConstant(self, node):
+        """ Python 3 """
+        copy_from_lineno_col_offset(node, str(node.value))
+
+    @visit_expr
+    def visit_Bytes(self, node):
+        position = (node.lineno, node.col_offset)
+        r_set_pos(node, *self.strings.find_next(position))
+
+    @visit_expr
+    def visit_YieldFrom(self, node):
+        copy_info(node, node.value)
+        position = (node.lineno, node.col_offset)
+        node.uid, first = self.operators['yield from'].find_next(position)
+        node.first_line, node.first_col = first
