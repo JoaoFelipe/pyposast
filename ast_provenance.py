@@ -74,7 +74,7 @@ class NodeWithPosition(object):
         self.first_line, self.first_col = first
         self.uid = self.last_line, self.last_col = last
 
-KEYWORDS = ('and', 'or', 'for')
+KEYWORDS = ('and', 'or', 'for', 'if', 'lambda')
 COMBINED_KEYWORDS = ('is not', 'yield from', 'not in')
 FUTURE_KEYWORDS = ('is', 'yield', 'not')
 PAST_KEYWORKDS = {
@@ -235,6 +235,57 @@ def visit_all(fn):
         fn(self, node)
         return result
     return decorator
+
+
+class LineCol(object):
+
+    def __init__(self, code, line, col):
+        self.code = code
+        self.line, self.col = line, col
+
+    def char(self):
+        return self.code[self.line - 1][self.col]
+
+    def inc(self):
+        self.col += 1
+        if len(self.code[self.line - 1]) == self.col:
+            self.col = 0
+            self.line += 1
+
+    def dec(self):
+        self.col -= 1
+        if self.col == -1:
+            self.col = len(self.code[self.line - 2])
+            self.line -= 1
+
+    def tuple(self):
+        return (self.line, self.col)
+
+    def __lt__(self, other):
+        return self.tuple() < other.tuple()
+
+    def __eq__(self, other):
+        return self.tuple() == other.tuple()
+
+
+def position_between(code, position1, position2):
+    code = code.split('\n')
+    if position1 > position2:
+        position1, position2 = position2, position1
+    p1, p2 = LineCol(code, *position1), LineCol(code, *position2)
+    start = LineCol(code, *position1)
+    while start < p2 and start.char() in ('\\', '\r', ' ', '\t'):
+        start.inc()
+    end = LineCol(code, position2[0], position2[1] - 1)
+    while end > p1 and end.char() in ('\\', '\r', ' ', '\t'):
+        end.dec()
+    if end > p1:
+        end.inc()
+    if start > end:
+        tup = start.tuple()
+        return tup, tup
+    return start.tuple(), end.tuple()
+
 
 class ProvenanceVisitor(ast.NodeVisitor):
 
@@ -462,3 +513,74 @@ class ProvenanceVisitor(ast.NodeVisitor):
     def visit_Dict(self, node):
         position = (node.lineno, node.col_offset + 1)
         set_pos(node, *self.brackets.find_previous(position))
+
+    @visit_all
+    def visit_IfExp(self, node):
+        set_max_position(node)
+        min_first_max_last(node, node.body)
+        min_first_max_last(node, node.orelse)
+        position = (node.test.first_line, node.test.first_col + 1)
+        node.uid = self.operators['if'].find_previous(position)[0]
+
+    @visit_all
+    def visit_Lambda(self, node):
+        copy_info(node, node.body)
+        position = (node.body.first_line, node.body.first_col + 1)
+        node.uid, before_colon = self.operators[':'].find_previous(position)
+        after_lambda, first = self.operators['lambda'].find_previous(position)
+        node.first_line, node.first_col = first
+
+        args = node.args
+        arg_position = position_between(self.code, after_lambda, before_colon)
+        args.first_line, args.first_col = arg_position[0]
+        args.uid = args.last_line, args.last_col = arg_position[1]
+
+    @visit_all
+    def visit_arg(self, node):
+        if node.annotation:
+            copy_info(node, node.annotation)
+        else:
+            node.last_line = node.lineno
+            node.last_col = node.col_offset + len(node.arg)
+        node.first_line, node.first_col = node.lineno, node.col_offset
+        node.uid = (node.last_line, node.last_col)
+
+    @visit_all
+    def visit_arguments(self, node):
+        if 'kwonlyargs' in dir(node):
+            """ Python 3 """
+            set_max_position(node)
+            for arg in node.args:
+                min_first_max_last(node, arg)
+            if node.vararg:
+                min_first_max_last(node, node.vararg)
+            for arg in node.kwonlyargs:
+                min_first_max_last(node, arg)
+            for arg in node.kw_defaults:
+                min_first_max_last(node, arg)
+            if node.kwarg:
+                min_first_max_last(node, node.kwarg)
+            for arg in node.defaults:
+                min_first_max_last(node, arg)
+            node.uid = (node.last_line, node.last_col)
+
+    def calculate_unaryop(self, node, next_node):
+        position = (next_node.first_line, next_node.first_col + 1)
+        possible = []
+        for ch in OPERATORS[node.__class__]:
+            try:
+                pos = self.operators[ch].find_previous(position)
+                if pos[1] < position:
+                    possible.append(pos)
+            except KeyError:
+                pass
+
+        return NodeWithPosition(
+            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
+        )
+
+    @visit_all
+    def visit_UnaryOp(self, node):
+        node.op_pos = self.calculate_unaryop(node.op, node.operand)
+        copy_info(node, node.op_pos)
+        min_first_max_last(node, node.operand)

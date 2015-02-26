@@ -31,6 +31,12 @@ def only_python2(fn):
         return None
     return decorator
 
+def only_python3(fn):
+    def decorator(*args, **kwargs):
+        if sys.version_info >= (3, 0):
+            return fn(*args, **kwargs)
+        return None
+    return decorator
 
 class TestProvenanceVisitor(unittest.TestCase):
 
@@ -533,6 +539,81 @@ class TestProvenanceVisitor(unittest.TestCase):
         nodes = get_nodes(code, ast.Dict)
         self.assertPosition(nodes[0], (2, 5), (4, 7), (4, 7))
 
+    def test_if_exp(self):
+        code = ("#bla\n"
+                "1 if 2\\\n"
+                "  else 3")
+        nodes = get_nodes(code, ast.IfExp)
+        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 4))
+
+    def test_lambda(self):
+        code = ("#bla\n"
+                "lambda x, y:\\\n"
+                "x")
+        nodes = get_nodes(code, ast.Lambda)
+        self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 12))
+
+    @only_python3
+    def test_arg(self):
+        code = ("#bla\n"
+                "def f(x: 'a', y):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arg)
+        self.assertPosition(nodes[0], (2, 6), (2, 12), (2, 12))
+        self.assertPosition(nodes[1], (2, 14), (2, 15), (2, 15))
+
+    def test_arguments(self):
+        code = ("#bla\n"
+                "lambda x, y=2, *z, **w : x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 7), (2, 22), (2, 22))
+
+    @only_python3
+    def test_arguments2(self):
+        code = ("#bla\n"
+                "lambda x, *, y=2: x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 7), (2, 16), (2, 16))
+
+    def test_arguments3(self):
+        code = ("#bla\n"
+                "lambda  : 2")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 8), (2, 8), (2, 8))
+
+    def test_unary_op(self):
+        code = ("#bla\n"
+                "- a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        self.assertPosition(nodes[0], (2, 0), (2, 3), (2, 1))
+
+    def test_invert(self):
+        code = ("#bla\n"
+                "~a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 1), (2, 1))
+
+    def test_not(self):
+        code = ("#bla\n"
+                "not a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 3), (2, 3))
+
+    def test_usub(self):
+        code = ("#bla\n"
+                "-a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 1), (2, 1))
+
+    def test_uadd(self):
+        code = ("#bla\n"
+                "+a")
+        nodes = get_nodes(code, ast.UnaryOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 0), (2, 1), (2, 1))
 
 if __name__ == '__main__':
     unittest.main()
