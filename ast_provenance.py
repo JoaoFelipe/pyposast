@@ -301,6 +301,37 @@ class ProvenanceVisitor(ast.NodeVisitor):
         self.numbers = tokens[5]
         self.visit(self.tree)
 
+    def calculate_infixop(self, node, previous, next_node):
+        previous_position = (previous.last_line, previous.last_col - 1)
+        position = (next_node.first_line, next_node.first_col + 1)
+        possible = []
+        for ch in OPERATORS[node.__class__]:
+            try:
+                pos = self.operators[ch].find_previous(position)
+                if previous_position < pos[1] < position:
+                    possible.append(pos)
+            except KeyError:
+                pass
+
+        return NodeWithPosition(
+            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
+        )
+
+    def calculate_unaryop(self, node, next_node):
+        position = (next_node.first_line, next_node.first_col + 1)
+        possible = []
+        for ch in OPERATORS[node.__class__]:
+            try:
+                pos = self.operators[ch].find_previous(position)
+                if pos[1] < position:
+                    possible.append(pos)
+            except KeyError:
+                pass
+
+        return NodeWithPosition(
+            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
+        )
+
     @visit_all
     def visit_Name(self, node):
         node.first_line = node.lineno
@@ -437,22 +468,6 @@ class ProvenanceVisitor(ast.NodeVisitor):
         last = self.parenthesis.find_next(position)[1]
         node.uid = node.last_line, node.last_col = last
 
-    def calculate_cmpop(self, node, previous, next_node):
-        previous_position = (previous.last_line, previous.last_col - 1)
-        position = (next_node.first_line, next_node.first_col + 1)
-        possible = []
-        for ch in OPERATORS[node.__class__]:
-            try:
-                pos = self.operators[ch].find_previous(position)
-                if previous_position < pos[1] < position:
-                    possible.append(pos)
-            except KeyError:
-                pass
-
-        return NodeWithPosition(
-            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
-        )
-
     @visit_all
     def visit_Compare(self, node):
         node.op_pos = []
@@ -463,7 +478,7 @@ class ProvenanceVisitor(ast.NodeVisitor):
         for i, comparator in enumerate(node.comparators):
             # Cannot set to the cmpop node as they are singletons
             node.op_pos.append(
-                self.calculate_cmpop(node.ops[i], previous, comparator)
+                self.calculate_infixop(node.ops[i], previous, comparator)
             )
             min_first_max_last(node, comparator)
             previous = comparator
@@ -564,23 +579,34 @@ class ProvenanceVisitor(ast.NodeVisitor):
                 min_first_max_last(node, arg)
             node.uid = (node.last_line, node.last_col)
 
-    def calculate_unaryop(self, node, next_node):
-        position = (next_node.first_line, next_node.first_col + 1)
-        possible = []
-        for ch in OPERATORS[node.__class__]:
-            try:
-                pos = self.operators[ch].find_previous(position)
-                if pos[1] < position:
-                    possible.append(pos)
-            except KeyError:
-                pass
-
-        return NodeWithPosition(
-            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
-        )
-
     @visit_all
     def visit_UnaryOp(self, node):
+        # Cannot set to the unaryop node as they are singletons
         node.op_pos = self.calculate_unaryop(node.op, node.operand)
         copy_info(node, node.op_pos)
         min_first_max_last(node, node.operand)
+
+    @visit_all
+    def visit_BinOp(self, node):
+        set_max_position(node)
+        min_first_max_last(node, node.left)
+        min_first_max_last(node, node.right)
+        node.op_pos = self.calculate_infixop(node.op, node.left, node.right)
+        node.uid = node.op_pos.uid
+
+    @visit_all
+    def visit_BoolOp(self, node):
+        node.op_pos = []
+        set_max_position(node)
+
+        previous = None
+        for value in node.values:
+            # Cannot set to the boolop nodes as they are singletons
+            if previous:
+                node.op_pos.append(
+                    self.calculate_infixop(node.op, previous, value)
+                )
+            min_first_max_last(node, value)
+            previous = value
+
+        node.uid = node.last_line, node.last_col

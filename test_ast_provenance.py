@@ -615,6 +615,123 @@ class TestProvenanceVisitor(unittest.TestCase):
         op = nodes[0].op_pos
         self.assertPosition(op, (2, 0), (2, 1), (2, 1))
 
+    def test_binop(self):
+        code = ("#bla\n"
+                "ab+a")
+        nodes = get_nodes(code, ast.BinOp)
+        self.assertPosition(nodes[0], (2, 0), (2, 4), (2, 3))
+
+    def test_binop2(self):
+        code = ("#bla\n"
+                "a * b + c")
+        nodes = get_nodes(code, ast.BinOp)
+        self.assertPosition(nodes[0], (2, 0), (2, 9), (2, 7))
+        self.assertPosition(nodes[1], (2, 0), (2, 5), (2, 3))
+
+    def test_add(self):
+        code = ("#bla\n"
+                "a + a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_sub(self):
+        code = ("#bla\n"
+                "a - a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_mult(self):
+        code = ("#bla\n"
+                "a * a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_div(self):
+        code = ("#bla\n"
+                "a / a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_mod(self):
+        code = ("#bla\n"
+                "a % a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_pow(self):
+        code = ("#bla\n"
+                "a ** a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_lshift(self):
+        code = ("#bla\n"
+                "a << a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_rshift(self):
+        code = ("#bla\n"
+                "a >> a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_bitor(self):
+        code = ("#bla\n"
+                "a | a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_bitand(self):
+        code = ("#bla\n"
+                "a & a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
+    def test_floordiv(self):
+        code = ("#bla\n"
+                "a // a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_bool_op(self):
+        code = ("#bla\n"
+                "a and b and c")
+        nodes = get_nodes(code, ast.BoolOp)
+        self.assertPosition(nodes[0], (2, 0), (2, 13), (2, 13))
+
+    def test_bool_op2(self):
+        code = ("#bla\n"
+                "a and b or c")
+        nodes = get_nodes(code, ast.BoolOp)
+        self.assertPosition(nodes[0], (2, 0), (2, 12), (2, 12))
+        self.assertPosition(nodes[1], (2, 0), (2, 7), (2, 7))
+
+    def test_and(self):
+        code = ("#bla\n"
+                "a and b")
+        nodes = get_nodes(code, ast.BoolOp)
+        op = nodes[0].op_pos[0]
+        self.assertPosition(op, (2, 2), (2, 5), (2, 5))
+
+    def test_or(self):
+        code = ("#bla\n"
+                "a or b")
+        nodes = get_nodes(code, ast.BoolOp)
+        op = nodes[0].op_pos[0]
+        self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
 if __name__ == '__main__':
     unittest.main()
 
