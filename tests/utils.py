@@ -1,10 +1,14 @@
+# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# This file is part of PyPosAST.
+# Please, consult the license terms in the LICENSE file.
+
 from __future__ import (absolute_import, division)
 
 import ast
 import unittest
 
-from ast_position.visitor import LineProvenanceVisitor as Visitor
-from ast_position.cross_version import only_python2, only_python3
+from pyposast.visitor import LineProvenanceVisitor as Visitor
+from pyposast.cross_version import only_python2, only_python3
 
 
 PATH = "__main__"

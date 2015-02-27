@@ -1,3 +1,7 @@
+# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# This file is part of PyPosAST.
+# Please, consult the license terms in the LICENSE file.
+
 import sys
 
 try:
