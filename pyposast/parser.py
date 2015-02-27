@@ -108,16 +108,16 @@ def extract_tokens(code, return_tokens=False):
             strings[t_erow_ecol] = start
         elif t_type == tokenize.NUMBER:
             numbers[t_erow_ecol] = t_srow_scol
+        elif t_type == tokenize.NAME and t_string in KEYWORDS:
+            operators[t_string][t_erow_ecol] = t_srow_scol
         elif t_type == tokenize.NAME and dots == 1:
             attributes[t_erow_ecol] = first_dot[2]
             dots = 0
             first_dot = None
-        elif t_type == tokenize.NAME and t_string in KEYWORDS:
-            operators[t_string][t_erow_ecol] = t_srow_scol
         elif t_type == tokenize.NAME and t_string == 'elif':
             operators['if'][t_erow_ecol] = t_srow_scol
         elif t_type == tokenize.NAME and t_string in PAST_KEYWORKDS.keys():
-            if last[1] == PAST_KEYWORKDS[t_string]:
+            if last and last[1] == PAST_KEYWORKDS[t_string]:
                 combined = "{} {}".format(PAST_KEYWORKDS[t_string], t_string)
                 operators[combined][t_erow_ecol] = last[2]
             elif t_string in FUTURE_KEYWORDS:
@@ -127,6 +127,8 @@ def extract_tokens(code, return_tokens=False):
         elif t_type == tokenize.NAME and t_string in FUTURE_KEYWORDS:
             tok[5] = True
 
+        if t_string != '.':
+            dots = 0
         if last and last[1] in FUTURE_KEYWORDS and last[5]:
             operators[last[1]][last[3]] = last[2]
 

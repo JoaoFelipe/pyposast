@@ -79,12 +79,30 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.ImportFrom)
         self.assertPosition(nodes[0], (2, 0), (3, 11), (2, 4))
 
+    def test_import_from3(self):
+        code = ("#bla\n"
+                "from . import get_config")
+        nodes = get_nodes(code, ast.ImportFrom)
+        self.assertPosition(nodes[0], (2, 0), (2, 24), (2, 4))
+
+    def test_import_from4(self):
+        code = ("#bla\n"
+                "from . import *")
+        nodes = get_nodes(code, ast.ImportFrom)
+        self.assertPosition(nodes[0], (2, 0), (2, 15), (2, 4))
+
     def test_import(self):
         code = ("#bla\n"
                 "import a,\\\n"
                 "b as c")
         nodes = get_nodes(code, ast.Import)
         self.assertPosition(nodes[0], (2, 0), (3, 6), (2, 6))
+
+    def test_import2(self):
+        code = ("#bla\n"
+                "import ab.cd. ef as gh")
+        nodes = get_nodes(code, ast.Import)
+        self.assertPosition(nodes[0], (2, 0), (2, 22), (2, 6))
 
     def test_assert(self):
         code = ("#bla\n"

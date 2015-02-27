@@ -28,6 +28,7 @@ def visit_all(fn):
         result = self.generic_visit(node)
         fn(self, node)
         return result
+    decorator.__name__ = fn.__name__
     return decorator
 
 
@@ -37,6 +38,7 @@ def visit_expr(fn):
         fn(self, node)
         update_expr_parenthesis(self.lcode, self.parenthesis, node)
         return result
+    decorator.__name__ = fn.__name__
     return decorator
 
 
@@ -70,6 +72,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                     possible.append(pos)
             except KeyError:
                 pass
+        
+        if not possible:
+            raise ValueError("not a single {} between {} and {}".format(
+                OPERATORS[node.__class__], previous_position, position))
+
         return NodeWithPosition(
             *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
         )
@@ -109,11 +116,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_expr
     def visit_Attribute(self, node):
-        position = (node.value.last_line, node.value.last_col + len(node.attr))
-        r_set_pos(node, *self.attributes.find_next(position))
-        node.uid = node.first_line, node.first_col
-        node.first_line = node.value.first_line
-        node.first_col = node.value.first_col
+        copy_info(node, node.value)
+        position = (node.last_line, node.last_col)
+        last, _ = self.names[node.attr].find_next(position)
+        node.last_line, node.last_col = last
+        node.uid, _ = self.operators['.'].find_next(position)
 
     @visit_all
     def visit_Index(self, node):
@@ -201,7 +208,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     def visit_Tuple(self, node):
         if not node.elts:
         # nprint(node)
-            position = (node.lineno, node.col_offset)
+            position = (node.lineno, node.col_offset + 1)
             set_pos(node, *self.parenthesis.find_previous(position))
         else:
             first = node.elts[0]
@@ -213,7 +220,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_expr
     def visit_List(self, node):
-        position = (node.lineno, node.col_offset)
+        position = (node.lineno, node.col_offset + 1)
         set_pos(node, *self.sbrackets.find_previous(position))
 
     @visit_expr
@@ -256,10 +263,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_expr
     def visit_Yield(self, node):
-        copy_info(node, node.value)
-        position = (node.lineno, node.col_offset)
-        node.uid, first = self.operators['yield'].find_next(position)
-        node.first_line, node.first_col = first
+        start_by_keyword(node, self.operators['yield'])
+        if node.value:
+            min_first_max_last(node, node.value)
 
     @visit_all
     def visit_comprehension(self, node):
@@ -441,7 +447,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             min_first_max_last(node, node.locals)
 
     def process_alias(self, position, alias):
-        last, first = self.names[alias.name].find_next(position)
+        splitted = alias.name.split('.')
+        first = None
+        for subname in splitted:
+            names = self.names if subname != '*' else self.operators
+            last, p1 = names[subname].find_next(position)
+            if not first:
+                first = p1
         if alias.asname:
             last, _ = self.names[alias.asname].find_next(last)
         alias.first_line, alias.first_col = first

@@ -17,9 +17,19 @@ class NodeWithPosition(object):
 
 
 def nprint(node):
-    print(dir(node))
-    print(node.lineno, node.col_offset)
-
+    d = dir(node)
+    print('-----------')
+    print('class:', node.__class__)
+    print('dir:', d)
+    if 'lineno' in d:
+        print('ast:', (node.lineno, node.col_offset))
+    if 'first_line' in d:
+        print('first last uid:', (node.first_line, node.first_col),
+              (node.last_line, node.last_col),
+              node.uid)
+    if 'op_pos' in d:
+        print('op_pos:', node.op_pos)
+    print('-----------')
 
 def copy_info(node_to, node_from):
     node_to.first_line = node_from.first_line

@@ -31,28 +31,33 @@ class LineCol(object):
         self.adjust()
 
     def char(self):
-        return self.code[self.line - 1][self.col]
+        try:
+            return self.code[self.line - 1][self.col]
+        except IndexError as e:
+            raise IndexError(str(e) +
+                (": self.code[self.line - 1][self.col] with \n"
+                 "self.line = {}; self.col = {}; len(self.code) = {}")
+                .format(self.line, self.col, len(self.code)))
 
     def inc(self):
         self.col += 1
-        if len(self.code[self.line - 1]) == self.col:
+        while len(self.code[self.line - 1]) == self.col and not self.eof:
             self.col = 0
             self.line += 1
 
     def dec(self):
         self.col -= 1
-        if self.col == -1:
+        while self.col == -1 and not self.bof:
             self.col = len(self.code[self.line - 2]) - 1
             self.line -= 1
 
     def adjust(self):
-        if len(self.code[self.line - 1]) == self.col:
+        while len(self.code[self.line - 1]) == self.col and not self.eof:
             self.col = 0
             self.line += 1
-        if self.col == -1:
+        while self.col == -1 and not self.bof:
             self.col = len(self.code[self.line - 2]) - 1
             self.line -= 1
-
     @property
     def eof(self):
         return self.line >= len(self.code) and self.col >= len(self.code[-1])

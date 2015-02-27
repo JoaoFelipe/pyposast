@@ -114,21 +114,21 @@ class TestExpr(NodeTestCase):
         code = ("#bla\n"
                 "a.b")
         nodes = get_nodes(code, ast.Attribute)
-        self.assertPosition(nodes[0], (2, 0), (2, 3), (2, 1))
+        self.assertPosition(nodes[0], (2, 0), (2, 3), (2, 2))
 
     def test_attribute2(self):
         code = ("#bla\n"
                 "a.\\\n"
                 "b")
         nodes = get_nodes(code, ast.Attribute)
-        self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 1))
+        self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 2))
 
     def test_attribute3(self):
         code = ("#bla\n"
                 "a.b.c")
         nodes = get_nodes(code, ast.Attribute)
-        self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 3))
-        self.assertPosition(nodes[1], (2, 0), (2, 3), (2, 1))
+        self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 4))
+        self.assertPosition(nodes[1], (2, 0), (2, 3), (2, 2))
 
     def test_attribute4(self):
         code = ("#bla\n"
@@ -136,16 +136,16 @@ class TestExpr(NodeTestCase):
                 "b.c\\\n"
                 ".d")
         nodes = get_nodes(code, ast.Attribute)
-        self.assertPosition(nodes[0], (2, 0), (4, 2), (4, 0))
-        self.assertPosition(nodes[1], (2, 0), (3, 3), (3, 1))
-        self.assertPosition(nodes[2], (2, 0), (3, 1), (2, 1))
+        self.assertPosition(nodes[0], (2, 0), (4, 2), (4, 1))
+        self.assertPosition(nodes[1], (2, 0), (3, 3), (3, 2))
+        self.assertPosition(nodes[2], (2, 0), (3, 1), (2, 2))
 
     def test_attribute5(self):
         code = ("#bla\n"
                 "(a.\\\n"
                 "   b)")
         nodes = get_nodes(code, ast.Attribute)
-        self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 2))
+        self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 3))
 
     def test_ellipsis(self):
         code = ("#bla\n"
@@ -363,6 +363,12 @@ class TestExpr(NodeTestCase):
                 "2)")
         nodes = get_nodes(code, ast.Yield)
         self.assertPosition(nodes[0], (2, 0), (3, 2), (2, 6))
+
+    def test_yield3(self):
+        code = ("#bla\n"
+                "yield")
+        nodes = get_nodes(code, ast.Yield)
+        self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 5))
 
     def test_generator_exp(self):
         code = ("#bla\n"
