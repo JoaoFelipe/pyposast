@@ -1,4 +1,4 @@
-from __future__ import (absolute_import, division, unicode_literals)
+from __future__ import (absolute_import, division)
 
 import bisect
 import tokenize
@@ -65,9 +65,10 @@ def extract_tokens(code, return_tokens=False):
     ]
     strings, attributes, numbers = {}, {}, {}
     result = [
-        parenthesis, sbrackets, brackets, strings, attributes, numbers
+        parenthesis, sbrackets, brackets, strings, attributes, numbers,
     ]
     operators = defaultdict(dict)
+    names = defaultdict(dict)
 
     parenthesis_stack = []
     sbrackets_stack = []
@@ -109,6 +110,8 @@ def extract_tokens(code, return_tokens=False):
             first_dot = None
         elif t_type == tokenize.NAME and t_string in KEYWORDS:
             operators[t_string][t_erow_ecol] = t_srow_scol
+        elif t_type == tokenize.NAME and t_string == 'elif':
+            operators['if'][t_erow_ecol] = t_srow_scol
         elif t_type == tokenize.NAME and t_string in PAST_KEYWORKDS.keys():
             if last[1] == PAST_KEYWORKDS[t_string]:
                 combined = "{} {}".format(PAST_KEYWORKDS[t_string], t_string)
@@ -123,6 +126,8 @@ def extract_tokens(code, return_tokens=False):
         if last and last[1] in FUTURE_KEYWORDS and last[5]:
             operators[last[1]][last[3]] = last[2]
 
+        if t_type == tokenize.NAME:
+            names[t_string][t_erow_ecol] = t_srow_scol
         if t_type != tokenize.NL:
             last = tok
 
@@ -131,4 +136,5 @@ def extract_tokens(code, return_tokens=False):
 
     result = [ElementDict(sorted(x.items())) for x in result]
     operators = {k: ElementDict(sorted(v.items())) for k, v in operators.items()}
-    return result, operators
+    names = {k: ElementDict(sorted(v.items())) for k, v in names.items()}
+    return result, operators, names

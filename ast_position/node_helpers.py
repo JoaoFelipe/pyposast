@@ -1,7 +1,9 @@
 from __future__ import (absolute_import, division, unicode_literals)
 
 from .constants import WHITESPACE
-from .utils import inc_tuple, dec_tuple, LineCol, position_between
+from .utils import (inc_tuple, dec_tuple, LineCol, position_between,
+                    find_in_between)
+
 
 class NodeWithPosition(object):
 
@@ -65,13 +67,32 @@ def r_set_previous_element(node, previous, element_dict):
     r_set_pos(node, *element_dict.find_previous(position))
 
 
+def keyword_followed_by_ids(node, keyword, names, ids):
+    position = (node.lineno, node.col_offset)
+    node.uid, first = keyword.find_next(position)
+    node.first_line, node.first_col = first
+    last = node.uid
+    for name in ids:
+        last, _ = names[name].find_next(last)
+
+    node.last_line, node.last_col = last
+
+def start_by_keyword(node, keyword, set_last=True):
+    position = (node.lineno, node.col_offset)
+    try:
+        node.uid, first = keyword.find_next(position)
+        if first != position:
+            raise IndexError
+    except IndexError:
+        node.uid, first = keyword.find_previous(position)
+    node.first_line, node.first_col = first
+    if set_last:
+        node.last_line, node.last_col = node.uid
+
 def update_expr_parenthesis(code, parenthesis, node):
     position = (node.first_line, node.first_col)
-    try:
-        p1, p2 = parenthesis.find_previous(position)
-    except IndexError:
-        return
-    if not p1 < position < p2:
+    p1, p2 = find_in_between(position, parenthesis)
+    if not p1:
         return
     p1, p2 = LineCol(code, *p1), LineCol(code, *dec_tuple(p2))
 
@@ -93,7 +114,6 @@ def update_expr_parenthesis(code, parenthesis, node):
         node.last_line, node.last_col = end_tuple
 
         update_expr_parenthesis(code, parenthesis, node)
-
 
 def increment_node_position(code, node):
     first = (node.first_line, node.first_col)

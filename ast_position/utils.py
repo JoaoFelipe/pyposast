@@ -1,4 +1,4 @@
-from __future__ import (absolute_import, division, unicode_literals)
+from __future__ import (absolute_import, division)
 
 from .constants import WHITESPACE
 
@@ -70,10 +70,21 @@ class LineCol(object):
         return str(self.tuple())
 
 
+def find_in_between(position, elements):
+    try:
+        p1, p2 = elements.find_previous(position)
+    except IndexError:
+        return None, None
+    if not p1 < position < p2:
+        return None, None
+    return p1, p2
+
+
 def position_between(code, position1, position2):
     if position1 > position2:
         position1, position2 = position2, position1
     p1, p2 = LineCol(code, *position1), LineCol(code, *position2)
+
     start = LineCol(code, *position1)
     while start < p2 and start.char() in WHITESPACE:
         start.inc()
@@ -88,3 +99,19 @@ def position_between(code, position1, position2):
         tup = start.tuple()
         return tup, tup
     return start.tuple(), end.tuple()
+
+
+def find_next_parenthesis(code, position, parenthesis):
+    p1, p2 = find_in_between(position, parenthesis)
+    if not p1:
+        return
+
+    p2 = LineCol(code, *dec_tuple(p2))
+    end = LineCol(code, *position)
+
+    while end < p2 and not end.eof and end.char() in WHITESPACE:
+        end.inc()
+
+    if end == p2:
+        return inc_tuple(end.tuple())
+    return

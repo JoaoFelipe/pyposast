@@ -1,4 +1,4 @@
-from __future__ import (absolute_import, division, unicode_literals)
+from __future__ import (absolute_import, division)
 
 import ast
 
@@ -205,6 +205,35 @@ class TestMisc(NodeTestCase):
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 8), (2, 8), (2, 8))
 
+    def test_arguments4(self):
+        code = ("#bla\n"
+                "def f( x, y=2, *z, **w ):\n"
+                "    x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 7), (2, 22), (2, 22))
+
+    @only_python3
+    def test_arguments5(self):
+        code = ("#bla\n"
+                "def f(x, *, y=2): x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 15), (2, 15))
+
+    def test_arguments6(self):
+        code = ("#bla\n"
+                "def f(  ):\n"
+                "   2")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 8), (2, 8), (2, 8))
+
+    def test_arguments7(self):
+        code = ("#bla\n"
+                "def f():\n"
+                "   2")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 6), (2, 6))
+
+
     def test_invert(self):
         code = ("#bla\n"
                 "~a")
@@ -323,3 +352,47 @@ class TestMisc(NodeTestCase):
         nodes = get_nodes(code, ast.BoolOp)
         op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 4), (2, 4))
+
+    def test_alias(self):
+        code = ("#bla\n"
+                "import a,\\\n"
+                "b as c")
+        nodes = get_nodes(code, ast.alias)
+        self.assertPosition(nodes[0], (2, 7), (2, 8), (2, 8))
+        self.assertPosition(nodes[1], (3, 0), (3, 6), (3, 6))
+
+    def test_excepthandler(self):
+        code = ("#bla\n"
+                "try:\n"
+                "    a\n"
+                "except Exception1:\n"
+                "    b\n"
+                "except Exception2:\n"
+                "    c")
+        nodes = get_nodes(code, ast.excepthandler)
+        self.assertPosition(nodes[0], (4, 0), (5, 5), (4, 6))
+        self.assertPosition(nodes[1], (6, 0), (7, 5), (6, 6))
+
+    @only_python3
+    def test_withitem(self):
+        code = ("#bla\n"
+                "with x as a, y:\n"
+                "    a")
+        nodes = get_nodes(code, ast.withitem)
+        self.assertPosition(nodes[0], (2, 5), (2, 11), (2, 6))
+        self.assertPosition(nodes[1], (2, 13), (2, 14), (2, 14))
+
+    @only_python3
+    def test_keyword(self):
+        code = ("#bla\n"
+                "@dec1\n"
+                "class a(metaclass=object):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.keyword)
+        self.assertPosition(nodes[0], (3, 8), (3, 24), (3, 18))
+
+    def test_keyword2(self):
+        code = ("#bla\n"
+                "f(a=2)")
+        nodes = get_nodes(code, ast.keyword)
+        self.assertPosition(nodes[0], (2, 2), (2, 5), (2, 4))
