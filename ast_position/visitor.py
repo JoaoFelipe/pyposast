@@ -37,12 +37,13 @@ def visit_expr(fn):
 
 
 visit_stmt = visit_all
+visit_mod = visit_all
 
 
 class LineProvenanceVisitor(ast.NodeVisitor):
 
-    def __init__(self, code, path):
-        self.tree = ast.parse(code, path)
+    def __init__(self, code, path, mode='exec'):
+        self.tree = ast.parse(code, path, mode=mode)
         self.code = code
         self.lcode = code.split('\n')
         tokens, self.operators, self.names = extract_tokens(code)
@@ -623,3 +624,24 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             self.adjust_decorator(node, dec)
 
         min_first_max_last(node, node.body[-1])
+
+    @visit_mod
+    def visit_Module(self, node):
+        set_max_position(node)
+
+        for stmt in node.body:
+            min_first_max_last(node, stmt)
+
+        if node.first_line == float('inf'):
+            node.first_line, node.first_col = 0, 0
+            node.last_line, node.last_col = 0, 0
+
+        node.uid = node.last_line, node.last_col
+
+    @visit_mod
+    def visit_Interactive(self, node):
+        self.visit_Module(node)
+
+    @visit_mod
+    def visit_Expression(self, node):
+        copy_info(node, node.body)

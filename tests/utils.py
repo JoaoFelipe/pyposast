@@ -23,8 +23,8 @@ class GetVisitor(ast.NodeVisitor):
         return ast.NodeVisitor.generic_visit(self, node)
 
 
-def get_nodes(code, desired_type):
-    return GetVisitor(Visitor(code, PATH).tree, desired_type).result
+def get_nodes(code, desired_type, mode='exec'):
+    return GetVisitor(Visitor(code, PATH, mode).tree, desired_type).result
 
 
 class NodeTestCase(unittest.TestCase):
