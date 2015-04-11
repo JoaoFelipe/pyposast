@@ -9,7 +9,7 @@ import ast
 
 from operator import sub
 
-from .cross_version import only_python2, only_python3
+from .cross_version import only_python2, only_python3, buffered_str
 from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
@@ -49,6 +49,7 @@ visit_mod = visit_all
 class LineProvenanceVisitor(ast.NodeVisitor):
 
     def __init__(self, code, path, mode='exec'):
+        code = buffered_str(code)
         self.tree = ast.parse(code, path, mode=mode)
         self.code = code
         self.lcode = code.split('\n')

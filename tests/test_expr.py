@@ -8,6 +8,11 @@ import ast
 
 from .utils import get_nodes, NodeTestCase, only_python2, only_python3
 
+def nprint(nodes):
+    for i, node in enumerate(nodes):
+        print(i, node.lineno, node.col_offset)
+
+
 
 class TestExpr(NodeTestCase):
 

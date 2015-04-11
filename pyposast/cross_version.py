@@ -9,6 +9,7 @@ try:
 except ImportError:
     from io import StringIO
 
+
 def select_version(compare_func):
 	def only_version_x(fn):
 		def inner(*args, **kwargs):
@@ -20,3 +21,12 @@ def select_version(compare_func):
 
 only_python2 = select_version(lambda x: x < (3, 0))
 only_python3 = select_version(lambda x: x >= (3, 0))
+
+
+def buffered_str(text, encoding="utf-8"):
+	ver = sys.version_info
+	if ver >= (3, 0) and isinstance(text, bytes):
+		return text.decode(encoding)
+	if ver < (3, 0) and isinstance(text, unicode):
+		return text.encode('ascii', 'replace')
+	return text

@@ -133,3 +133,9 @@ class TestExtra(NodeTestCase):
         self.assertPosition(nodes[6], (3, 1), (4, 7), (3, 24))
         self.assertPosition(nodes[7], (3, 1), (3, 8), (3, 5))
         self.assertPosition(nodes[8], (3, 14), (3, 21), (3, 18))
+
+    def test_name(self):
+        code = (b"#bla\n"
+                b"abc")
+        nodes = get_nodes(code, ast.Name)
+        self.assertPosition(nodes[0], (2, 0), (2, 3), (2, 3))

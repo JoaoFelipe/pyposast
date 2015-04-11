@@ -8,6 +8,10 @@ import ast
 
 from .utils import get_nodes, NodeTestCase, only_python2, only_python3
 
+def nprint(nodes):
+    for i, node in enumerate(nodes):
+        print(i, node.lineno, node.col_offset)
+
 
 class TestStmt(NodeTestCase):
 
@@ -215,6 +219,13 @@ class TestStmt(NodeTestCase):
     def test_with(self):
         code = ("#bla\n"
                 "with x as f:\n"
+                "    a")
+        nodes = get_nodes(code, ast.With)
+        self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 4))
+
+    def test_with2(self):
+        code = ("#bla\n"
+                "with x as f, y as f2:\n"
                 "    a")
         nodes = get_nodes(code, ast.With)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 4))
