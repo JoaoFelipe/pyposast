@@ -7,6 +7,8 @@ I (João Felipe Pimentel) started this library to help me with ast analysis on [
 
 Installing and using PyPosAST is simple and easy. Please check our installation and basic usage guidelines below.
 
+This package supports Python 2.7, 3.4 and 3.5
+
 
 Quick Installation
 ------------------

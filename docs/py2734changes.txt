@@ -1,0 +1,53 @@
+stmt = FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list,
++                  expr? returns)
+
+     | ClassDef(identifier name, expr* bases,
++               keyword* keywords, expr? starargs, expr? kwargs,
+                stmt* body, expr* decorator_list)
+
+-    | Print(expr? dest, expr* values, bool nl)
+
+     | With(
+-           expr context_expr, expr? optional_vars,
++           withitem* items,
+            stmt* body)
+
+-    | Raise(expr? type, expr? inst, expr? tback)
++    | Raise(expr? exc, expr? cause)
+
+-    | TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
+-    | TryFinally(stmt* body, stmt* finalbody)
++    | Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
+
+-    | Exec(expr body, expr? globals, expr? locals)
+
++    | Nonlocal(identifier* names)
+
+expr =
++    | YieldFrom(expr value)
+
+-    | Repr(expr value)
+
++    | Bytes(bytes s)
+
++    | NameConstant(singleton value)
+
++    | Ellipsis
+
++    | Starred(expr value, expr_context ctx)
+
+slice = -Ellipsis | Slice(expr? lower, expr? upper, expr? step)
+
+excepthandler = ExceptHandler(expr? type,
+-                             expr? name
++                             identifier? name,
+                              stmt* body)
+
+arguments = (
+-            expr* args, identifier? vararg, identifier? kwarg,
++            arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults, arg? kwarg,
+             expr* defaults)
+
++arg = (identifier arg, expr? annotation)
+
++withitem = (expr context_expr, expr? optional_vars)

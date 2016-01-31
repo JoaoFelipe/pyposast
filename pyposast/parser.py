@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
@@ -10,7 +10,7 @@ import tokenize
 from collections import OrderedDict, defaultdict
 
 from .cross_version import StringIO
-from .constants import (KEYWORDS, COMBINED_KEYWORDS,
+from .constants import (KEYWORDS, COMBINED_KEYWORDS, SEMI_KEYWORDS,
                         FUTURE_KEYWORDS, PAST_KEYWORKDS)
 
 
@@ -126,6 +126,8 @@ def extract_tokens(code, return_tokens=False):
                 operators[t_string][t_erow_ecol] = t_srow_scol
         elif t_type == tokenize.NAME and t_string in FUTURE_KEYWORDS:
             tok[5] = True
+        elif t_string in SEMI_KEYWORDS:
+            operators[t_string][t_erow_ecol] = t_srow_scol
 
         if t_string != '.':
             dots = 0

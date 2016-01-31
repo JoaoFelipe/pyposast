@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
@@ -6,7 +6,8 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase, only_python2, only_python3
+from .utils import get_nodes, NodeTestCase
+from .utils import only_python2, only_python3, only_python35
 
 
 class TestMisc(NodeTestCase):
@@ -287,6 +288,14 @@ class TestMisc(NodeTestCase):
         op = nodes[0].op_pos
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
+    @only_python35
+    def test_matmult(self):
+        code = ("#bla\n"
+                "a @ a")
+        nodes = get_nodes(code, ast.BinOp)
+        op = nodes[0].op_pos
+        self.assertPosition(op, (2, 2), (2, 3), (2, 3))
+
     def test_div(self):
         code = ("#bla\n"
                 "a / a")
@@ -400,3 +409,12 @@ class TestMisc(NodeTestCase):
                 "f(a=2)")
         nodes = get_nodes(code, ast.keyword)
         self.assertPosition(nodes[0], (2, 2), (2, 5), (2, 4))
+
+    @only_python35
+    def test_keyword3(self):
+        code = ("#bla\n"
+                "f(x, a=2, **b, ** c)")
+        nodes = get_nodes(code, ast.keyword)
+        self.assertPosition(nodes[0], (2, 5), (2, 8), (2, 7))
+        self.assertPosition(nodes[1], (2, 10), (2, 13), (2, 12))
+        self.assertPosition(nodes[2], (2, 15), (2, 19), (2, 17))

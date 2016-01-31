@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
@@ -21,6 +21,7 @@ def select_version(compare_func):
 
 only_python2 = select_version(lambda x: x < (3, 0))
 only_python3 = select_version(lambda x: x >= (3, 0))
+only_python35 = select_version(lambda x: x >= (3, 5))
 
 
 def buffered_str(text, encoding="utf-8"):

@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
@@ -24,18 +24,18 @@ from .node_helpers import (NodeWithPosition, nprint, copy_info,
 
 
 def visit_all(fn):
-    def decorator(self, node):
+    def decorator(self, node, *args, **kwargs):
         result = self.generic_visit(node)
-        fn(self, node)
+        fn(self, node, *args, **kwargs)
         return result
     decorator.__name__ = fn.__name__
     return decorator
 
 
 def visit_expr(fn):
-    def decorator(self, node):
+    def decorator(self, node, *args, **kwargs):
         result = self.generic_visit(node)
-        fn(self, node)
+        fn(self, node, *args, **kwargs)
         update_expr_parenthesis(self.lcode, self.parenthesis, node)
         return result
     decorator.__name__ = fn.__name__
@@ -73,7 +73,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                     possible.append(pos)
             except KeyError:
                 pass
-        
+
         if not possible:
             raise ValueError("not a single {} between {} and {}".format(
                 OPERATORS[node.__class__], previous_position, position))
@@ -131,7 +131,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_expr
     def visit_Ellipsis(self, node):
         if 'lineno' in dir(node):
-            """ Python 3 """
+            """Python 3"""
             position = (node.lineno, node.col_offset)
             r_set_pos(node, *self.operators['...'].find_next(position))
 
@@ -159,7 +159,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     def process_slice(self, the_slice, previous):
         if isinstance(the_slice, ast.Ellipsis):
-            """ Python 2 ellipsis has no location """
+            """Python 2 ellipsis has no location"""
             position = (previous.last_line, previous.last_col + 1)
             r_set_pos(the_slice, *self.operators['...'].find_next(position))
 
@@ -239,7 +239,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = (node.last_line, node.last_col)
         last = self.parenthesis.find_next(position)[1]
         node.uid = node.last_line, node.last_col = last
-        children = [node.starargs, node.kwargs]
+        children = []
+        if hasattr(node, 'starargs'):
+            """ Python <= 3.4 """
+            children += [node.starargs, node.kwargs]
         children += node.args + node.keywords
         children = [x for x in children if x]
         if len(children) == 1 and isinstance(children[0], ast.expr):
@@ -261,6 +264,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             previous = comparator
 
         node.uid = node.last_line, node.last_col
+
+    @visit_expr
+    def visit_Await(self, node):
+        start_by_keyword(node, self.operators['await'])
+        min_first_max_last(node, node.value)
 
     @visit_expr
     def visit_Yield(self, node):
@@ -391,7 +399,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_expr
     def visit_Starred(self, node):
         """ Python 3 """
-        r_set_previous_element(node, node.value, self.operators['*'])
+        position = (node.value.first_line, node.value.first_col + 1)
+        r_set_pos(node, *self.operators['*'].find_previous(position))
         last = node.value
         node.last_line, node.last_col = last.last_line, last.last_col
 
@@ -530,9 +539,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             min_first_max_last(node, child)
 
     @visit_stmt
-    def visit_With(self, node):
-        start_by_keyword(node, self.operators['with'])
+    def visit_With(self, node, keyword='with'):
+        start_by_keyword(node, self.operators[keyword])
         min_first_max_last(node, node.body[-1])
+
+    @visit_stmt
+    def visit_AsyncWith(self, node):
+        """ Python 3.5 """
+        self.visit_With(node, keyword='async')
 
     @visit_all
     def visit_withitem(self, node):
@@ -555,14 +569,20 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             min_first_max_last(node, node.orelse[-1])
 
     @visit_stmt
-    def visit_For(self, node):
-        start_by_keyword(node, self.operators['for'])
+    def visit_For(self, node, keyword='for'):
+        start_by_keyword(node, self.operators[keyword])
         min_first_max_last(node, node.body[-1])
         if node.orelse:
             min_first_max_last(node, node.orelse[-1])
 
     @visit_stmt
+    def visit_AsyncFor(self, node):
+        """ Python 3.5 """
+        self.visit_For(node, keyword='async')
+
+    @visit_stmt
     def visit_Print(self, node):
+        """ Python 2 """
         start_by_keyword(node, self.operators['print'])
         if node.dest:
             min_first_max_last(node, node.dest)
@@ -626,13 +646,16 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     def visit_keyword(self, node):
         copy_info(node, node.value)
         position = (node.first_line, node.first_col + 1)
-        node.uid, first = self.operators['='].find_previous(position)
-        _, first = self.names[node.arg].find_previous(first)
+        if node.arg:
+            node.uid, first = self.operators['='].find_previous(position)
+            _, first = self.names[node.arg].find_previous(first)
+        else:
+            node.uid, first = self.operators['**'].find_previous(position)
         node.first_line, node.first_col = first
 
     @visit_stmt
-    def visit_FunctionDef(self, node):
-        start_by_keyword(node, self.operators['def'])
+    def visit_FunctionDef(self, node, keyword='def'):
+        start_by_keyword(node, self.operators[keyword])
         previous, last = self.parenthesis.find_next(node.uid)
         self.update_arguments(node.args, inc_tuple(previous), dec_tuple(last))
 
@@ -641,6 +664,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             self.adjust_decorator(node, dec)
 
         min_first_max_last(node, node.body[-1])
+
+    @visit_stmt
+    def visit_AsyncFunctionDef(self, node):
+        """ Python 3.5 """
+        self.visit_FunctionDef(node, keyword='async')
 
     @visit_mod
     def visit_Module(self, node):

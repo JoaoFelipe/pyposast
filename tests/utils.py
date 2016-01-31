@@ -8,7 +8,7 @@ import ast
 import unittest
 
 from pyposast.visitor import LineProvenanceVisitor as Visitor
-from pyposast.cross_version import only_python2, only_python3
+from pyposast.cross_version import only_python2, only_python3, only_python35
 
 
 PATH = "__main__"

@@ -1,0 +1,25 @@
+stmt =
++    | AsyncFunctionDef(identifier name, arguments args,
++                       stmt* body, expr* decorator_list, expr? returns)
+     | ClassDef(identifier name,
+                expr* bases,
+                keyword* keywords,
+-               expr? starargs,
+-               expr? kwargs,
+                stmt* body,
+                expr* decorator_list)
+
++    | AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+
++    | AsyncWith(withitem* items, stmt* body)
+
+expr =
++    | Await(expr value)
+
+     | Call(expr func, expr* args, keyword* keywords,
+-           expr? starargs, expr? kwargs)
+
+operator = Add | Sub | Mult | +MatMult | Div | Mod | Pow | LShift
+         | RShift | BitOr | BitXor | BitAnd | FloorDiv
+
+keyword = (identifier+? arg, expr value)

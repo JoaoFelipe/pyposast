@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
@@ -6,7 +6,9 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase, only_python2, only_python3
+from .utils import get_nodes, NodeTestCase
+from .utils import only_python2, only_python3, only_python35
+
 
 def nprint(nodes):
     for i, node in enumerate(nodes):
@@ -230,6 +232,14 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.With)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 4))
 
+    @only_python35
+    def test_async_with(self):
+        code = ("async def f():\n"
+                "    async with x as f:\n"
+                "        a")
+        nodes = get_nodes(code, ast.AsyncWith)
+        self.assertPosition(nodes[0], (2, 4), (3, 9), (2, 9))
+
     def test_if(self):
         code = ("#bla\n"
                 "if x:\n"
@@ -303,6 +313,14 @@ class TestStmt(NodeTestCase):
                 "    b")
         nodes = get_nodes(code, ast.For)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 3))
+
+    @only_python35
+    def test_async_for(self):
+        code = ("async def f():\n"
+                "    async for x in l:\n"
+                "        a")
+        nodes = get_nodes(code, ast.AsyncFor)
+        self.assertPosition(nodes[0], (2, 4), (3, 9), (2, 9))
 
     @only_python2
     def test_print(self):
@@ -413,3 +431,11 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.FunctionDef)
         self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 3))
+
+    @only_python35
+    def test_async_function_def(self):
+        code = ("#bla\n"
+                "async def f(x, y=2, *z, **w):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.AsyncFunctionDef)
+        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 5))

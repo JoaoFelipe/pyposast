@@ -1,20 +1,21 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
 from __future__ import (absolute_import, division)
 
 import ast
+import sys
 
 WHITESPACE = ('\\', '\r', ' ', '\t')
-KEYWORDS = ('and', 'or', 'for', 'if', 'lambda', 'None', 'nonlocal',
-            'global', 'exec', 'import', 'assert', 'try', 'except', 'raise',
-            'with', 'while', 'print', 'del', 'return', 'class', 'def')
-COMBINED_KEYWORDS = ('is not', 'yield from', 'not in')
-FUTURE_KEYWORDS = ('is', 'yield', 'not')
+KEYWORDS = ['and', 'or', 'for', 'if', 'lambda', 'None', 'global', 'import',
+            'assert', 'try', 'except', 'raise', 'with', 'while', 'del',
+            'return', 'class', 'def']
+SEMI_KEYWORDS = []
+COMBINED_KEYWORDS = ['is not',  'not in']
+FUTURE_KEYWORDS = ['is', 'not']
 PAST_KEYWORKDS = {
     'in': 'not',
-    'from': 'yield',
     'not': 'is'
 }
 
@@ -49,3 +50,19 @@ OPERATORS = {
     ast.UAdd: ('+',),
     ast.Assign: ('=',),
 }
+
+if sys.version_info < (3, 0):
+    # Python 2
+    KEYWORDS += ['exec', 'print', 'from', 'yield']
+
+if sys.version_info >= (3, 0):
+    KEYWORDS.append('nonlocal')
+    COMBINED_KEYWORDS.append('yield from')
+    FUTURE_KEYWORDS.append('yield')
+    PAST_KEYWORKDS['from'] = 'yield'
+
+if sys.version_info >= (3, 5):
+    # async and await will be promoted to keyword in 3.7
+    SEMI_KEYWORDS += ['async', 'await']
+    OPERATORS[ast.MatMult] = ('@',)
+

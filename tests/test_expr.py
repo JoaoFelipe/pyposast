@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Universidade Federal Fluminense (UFF)
+# Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
 
@@ -6,7 +6,8 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase, only_python2, only_python3
+from .utils import get_nodes, NodeTestCase
+from .utils import only_python2, only_python3, only_python35
 
 def nprint(nodes):
     for i, node in enumerate(nodes):
@@ -356,6 +357,21 @@ class TestExpr(NodeTestCase):
         nodes = get_nodes(code, ast.Compare)
         self.assertPosition(nodes[0], (2, 0), (3, 3), (3, 3))
 
+    @only_python35
+    def test_await(self):
+        code = ("async def f():\n"
+                "    await   2")
+        nodes = get_nodes(code, ast.Await)
+        self.assertPosition(nodes[0], (2, 4), (2, 13), (2, 9))
+
+    @only_python35
+    def test_await2(self):
+        code = ("async def f():\n"
+                "    (await \n"
+                "2)")
+        nodes = get_nodes(code, ast.Await)
+        self.assertPosition(nodes[0], (2, 4), (3, 2), (2, 10))
+
     def test_yield(self):
         code = ("#bla\n"
                 "yield   2")
@@ -561,6 +577,29 @@ class TestExpr(NodeTestCase):
                 "a, (* b) = 1, 2, 3")
         nodes = get_nodes(code, ast.Starred)
         self.assertPosition(nodes[0], (2, 3), (2, 8), (2, 5))
+
+    @only_python3
+    def test_starred3(self):
+        code = ("#bla\n"
+                "a, *b = 1, 2, 3")
+        nodes = get_nodes(code, ast.Starred)
+        self.assertPosition(nodes[0], (2, 3), (2, 5), (2, 4))
+
+    @only_python35
+    def test_starred4(self):
+        code = ("#bla\n"
+                "f(*a, 5, *b)")
+        nodes = get_nodes(code, ast.Starred)
+        self.assertPosition(nodes[0], (2, 2), (2, 4), (2, 3))
+        self.assertPosition(nodes[1], (2, 9), (2, 11), (2, 10))
+
+    @only_python35
+    def test_starred5(self):
+        code = ("#bla\n"
+                "i, j, k, l, m = *a, 5, *b")
+        nodes = get_nodes(code, ast.Starred)
+        self.assertPosition(nodes[0], (2, 16), (2, 18), (2, 17))
+        self.assertPosition(nodes[1], (2, 23), (2, 25), (2, 24))
 
     @only_python3
     def test_name_constant(self):
