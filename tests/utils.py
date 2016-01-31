@@ -4,31 +4,11 @@
 
 from __future__ import (absolute_import, division)
 
-import ast
 import unittest
 
-from pyposast.visitor import LineProvenanceVisitor as Visitor
+
 from pyposast.cross_version import only_python2, only_python3, only_python35
-
-
-PATH = "__main__"
-
-
-class GetVisitor(ast.NodeVisitor):
-
-    def __init__(self, tree, desired_type):
-        self.desired_type = desired_type
-        self.result = []
-        self.visit(tree)
-
-    def generic_visit(self, node):
-        if isinstance(node, self.desired_type):
-            self.result.append(node)
-        return ast.NodeVisitor.generic_visit(self, node)
-
-
-def get_nodes(code, desired_type, mode='exec'):
-    return GetVisitor(Visitor(code, PATH, mode).tree, desired_type).result
+from pyposast import get_nodes
 
 
 class NodeTestCase(unittest.TestCase):
