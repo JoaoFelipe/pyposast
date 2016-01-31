@@ -329,7 +329,6 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.Print)
         self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 5))
 
-
     @only_python2
     def test_print2(self):
         code = ("#bla\n"

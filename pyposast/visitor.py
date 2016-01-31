@@ -357,7 +357,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             for arg in node.kwonlyargs:
                 min_first_max_last(node, arg)
             for arg in node.kw_defaults:
-                min_first_max_last(node, arg)
+                if arg:
+                    min_first_max_last(node, arg)
             if node.kwarg:
                 min_first_max_last(node, node.kwarg)
             for arg in node.defaults:

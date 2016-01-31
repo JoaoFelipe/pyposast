@@ -75,7 +75,7 @@ class TestMisc(NodeTestCase):
         nodes = get_nodes(code, ast.ExtSlice)
         self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 7))
 
-    def test_ext_slice2(self):
+    def test_ext_slice3(self):
         code = ("#bla\n"
                 "a[3,1:2:]")
         nodes = get_nodes(code, ast.ExtSlice)
@@ -238,6 +238,12 @@ class TestMisc(NodeTestCase):
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 6), (2, 6), (2, 6))
 
+    @only_python3
+    def test_arguments8(self):
+        code = ("#bla\n"
+                "def f(x, *, y, z=2): x")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 18), (2, 18))
 
     def test_invert(self):
         code = ("#bla\n"
