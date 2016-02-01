@@ -134,7 +134,7 @@ def extract_tokens(code, return_tokens=False):
         if last and last[1] in FUTURE_KEYWORDS and last[5]:
             operators[last[1]][last[3]] = last[2]
 
-        if t_type == tokenize.NAME:
+        if t_type == tokenize.NAME or t_string == 'None':
             names[t_string][t_erow_ecol] = t_srow_scol
         if t_type != tokenize.NL:
             last = tok

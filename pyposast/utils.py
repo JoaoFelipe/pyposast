@@ -127,3 +127,15 @@ def find_next_parenthesis(code, position, parenthesis):
     if end == p2:
         return inc_tuple(end.tuple())
     return
+
+
+def extract_positions(utf8):
+    j = 0
+    utf8_pos_to_bytes = {}
+    bytes_pos_to_utf8 = {}
+
+    for i, c in enumerate(utf8):
+        utf8_pos_to_bytes[i] = j
+        bytes_pos_to_utf8[j] = i
+        j += len(c.encode("utf-8"))
+    return utf8_pos_to_bytes, bytes_pos_to_utf8

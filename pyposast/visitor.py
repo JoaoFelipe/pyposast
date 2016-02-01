@@ -9,18 +9,49 @@ import ast
 
 from operator import sub
 
-from .cross_version import only_python2, only_python3, buffered_str
+from .cross_version import only_python2, only_python3, native_decode_source
 from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
-                    find_next_parenthesis)
-from .node_helpers import (NodeWithPosition, nprint, copy_info,
+                    find_next_parenthesis, extract_positions)
+from .node_helpers import (NodeWithPosition, nprint, copy_info, ast_pos,
                            copy_from_lineno_col_offset, set_pos,
                            r_set_pos, min_first_max_last, set_max_position,
                            set_max_position, set_previous_element,
                            r_set_previous_element, update_expr_parenthesis,
                            increment_node_position, keyword_followed_by_ids,
                            start_by_keyword)
+
+
+def extract_code(lines, node, lstrip="", ljoin="\n", strip=""):
+    """Get corresponding text in the code
+
+
+    Arguments:
+    lines -- code splitted by linebreak
+    node -- PyPosAST enhanced node
+
+
+    Keyword Arguments:
+    lstrip -- During extraction, strip lines with this arg (default="")
+    ljoin -- During extraction, join lines with this arg (default="\n")
+    strip -- After extraction, strip all code with this arg (default="")
+    """
+    first_line, first_col = node.first_line - 1, node.first_col
+    last_line, last_col = node.last_line - 1, node.last_col
+    if first_line == last_line:
+        return lines[first_line][first_col:last_col].strip(strip)
+
+    result = []
+    # Add first line
+    result.append(lines[first_line][first_col:].strip(lstrip))
+    # Add middle lines
+    if first_line + 1 != last_line:
+        for line in range(first_line + 1, last_line):
+            result.append(lines[line].strip(lstrip))
+    # Add last line
+    result.append(lines[last_line][:last_col].strip(lstrip))
+    return ljoin.join(result).strip(strip)
 
 
 def visit_all(fn):
@@ -49,10 +80,24 @@ visit_mod = visit_all
 class LineProvenanceVisitor(ast.NodeVisitor):
 
     def __init__(self, code, path, mode='exec'):
-        code = buffered_str(code)
+        code = native_decode_source(code)
         self.tree = ast.parse(code, path, mode=mode)
         self.code = code
         self.lcode = code.split('\n')
+        self.utf8_pos_to_bytes = []
+        self.bytes_pos_to_utf8 = []
+        if ((only_python2 and isinstance(code, str)) or
+                (only_python3 and isinstance(code, bytes))):
+            for i, line in enumerate(self.lcode):
+                same = {j: j for j, c in enumerate(line)}
+                self.utf8_pos_to_bytes.append(same)
+                self.bytes_pos_to_utf8.append(same)
+        else:
+            for i, line in enumerate(self.lcode):
+                utf8, byte = extract_positions(line)
+                self.utf8_pos_to_bytes.append(utf8)
+                self.bytes_pos_to_utf8.append(byte)
+
         tokens, self.operators, self.names = extract_tokens(code)
         self.parenthesis = tokens[0]
         self.sbrackets = tokens[1]
@@ -99,12 +144,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_expr
     def visit_Name(self, node):
-        copy_from_lineno_col_offset(node, node.id)
+        copy_from_lineno_col_offset(node, node.id, self.bytes_pos_to_utf8)
 
     @visit_expr
     def visit_Num(self, node):
-        node.first_line = node.lineno
-        node.first_col = node.col_offset
+        node.first_line, node.first_col = ast_pos(node, self.bytes_pos_to_utf8)
         node.last_line = node.lineno
         position = (node.first_line, node.first_col)
         node.last_line, node.last_col = self.numbers.find_next(position)[0]
@@ -148,7 +192,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 last, first = self.operators['None'].find_next(position)
                 if first == (node.step.first_line, node.step.first_col):
                     empty_none = False
-            except KeyError:
+            except (KeyError, IndexError):
                 pass
             if empty_none:
                 node.step.last_col = node.step.col_offset + 1
@@ -208,7 +252,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_expr
     def visit_Tuple(self, node):
         if not node.elts:
-        # nprint(node)
             position = (node.lineno, node.col_offset + 1)
             set_pos(node, *self.parenthesis.find_previous(position))
         else:
@@ -267,12 +310,12 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_expr
     def visit_Await(self, node):
-        start_by_keyword(node, self.operators['await'])
+        start_by_keyword(node, self.operators['await'], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.value)
 
     @visit_expr
     def visit_Yield(self, node):
-        start_by_keyword(node, self.operators['yield'])
+        start_by_keyword(node, self.operators['yield'], self.bytes_pos_to_utf8)
         if node.value:
             min_first_max_last(node, node.value)
 
@@ -408,7 +451,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_expr
     def visit_NameConstant(self, node):
         """ Python 3 """
-        copy_from_lineno_col_offset(node, str(node.value))
+        copy_from_lineno_col_offset(node, str(node.value),
+                                    self.bytes_pos_to_utf8)
 
     @visit_expr
     def visit_Bytes(self, node):
@@ -424,15 +468,15 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_Pass(self, node):
-        copy_from_lineno_col_offset(node, 'pass')
+        copy_from_lineno_col_offset(node, 'pass', self.bytes_pos_to_utf8)
 
     @visit_stmt
     def visit_Break(self, node):
-        copy_from_lineno_col_offset(node, 'break')
+        copy_from_lineno_col_offset(node, 'break', self.bytes_pos_to_utf8)
 
     @visit_stmt
     def visit_Continue(self, node):
-        copy_from_lineno_col_offset(node, 'continue')
+        copy_from_lineno_col_offset(node, 'continue', self.bytes_pos_to_utf8)
 
     @visit_stmt
     def visit_Expr(self, node):
@@ -441,17 +485,18 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_stmt
     def visit_Nonlocal(self, node):
         keyword_followed_by_ids(node, self.operators['nonlocal'], self.names,
-                                node.names)
+                                node.names, self.bytes_pos_to_utf8)
 
     @visit_stmt
     def visit_Global(self, node):
         keyword_followed_by_ids(node, self.operators['global'], self.names,
-                                node.names)
+                                node.names, self.bytes_pos_to_utf8)
 
     @visit_stmt
     def visit_Exec(self, node):
         copy_info(node, node.body)
-        start_by_keyword(node, self.operators['exec'], set_last=False)
+        start_by_keyword(node, self.operators['exec'],
+                         self.bytes_pos_to_utf8, set_last=False)
         if node.globals:
             min_first_max_last(node, node.globals)
         if node.locals:
@@ -473,7 +518,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_ImportFrom(self, node):
-        start_by_keyword(node, self.operators['from'])
+        start_by_keyword(node, self.operators['from'], self.bytes_pos_to_utf8)
         last = node.uid
         last, _ = self.operators['import'].find_next(last)
         for alias in node.names:
@@ -485,7 +530,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_Import(self, node):
-        start_by_keyword(node, self.operators['import'])
+        start_by_keyword(node, self.operators['import'],
+                         self.bytes_pos_to_utf8)
         last = node.uid
         for alias in node.names:
             last = self.process_alias(last, alias)
@@ -496,16 +542,17 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         copy_info(node, node.test)
         if node.msg:
             min_first_max_last(node, node.msg)
-        start_by_keyword(node, self.operators['assert'], set_last=False)
+        start_by_keyword(node, self.operators['assert'],
+                         self.bytes_pos_to_utf8, set_last=False)
 
     @visit_stmt
     def visit_TryFinally(self, node):
-        start_by_keyword(node, self.operators['try'])
+        start_by_keyword(node, self.operators['try'], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.finalbody[-1])
 
     @visit_stmt
     def visit_TryExcept(self, node):
-        start_by_keyword(node, self.operators['try'])
+        start_by_keyword(node, self.operators['try'], self.bytes_pos_to_utf8)
         if node.orelse:
             min_first_max_last(node, node.orelse[-1])
         for handler in node.handlers:
@@ -513,12 +560,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_all
     def visit_ExceptHandler(self, node):
-        start_by_keyword(node, self.operators['except'])
+        start_by_keyword(node, self.operators['except'],
+                         self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
 
     @visit_stmt
     def visit_Try(self, node):
-        start_by_keyword(node, self.operators['try'])
+        start_by_keyword(node, self.operators['try'], self.bytes_pos_to_utf8)
         if node.orelse:
             min_first_max_last(node, node.orelse[-1])
         for handler in node.handlers:
@@ -528,7 +576,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_Raise(self, node):
-        start_by_keyword(node, self.operators['raise'])
+        start_by_keyword(node, self.operators['raise'], self.bytes_pos_to_utf8)
         if 'type' in dir(node):
             """ Python 2 """
             children = [node.type, node.inst, node.tback]
@@ -541,7 +589,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_With(self, node, keyword='with'):
-        start_by_keyword(node, self.operators[keyword])
+        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
 
     @visit_stmt
@@ -557,21 +605,21 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_If(self, node):
-        start_by_keyword(node, self.operators['if'])
+        start_by_keyword(node, self.operators['if'], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
         if node.orelse:
             min_first_max_last(node, node.orelse[-1])
 
     @visit_stmt
     def visit_While(self, node):
-        start_by_keyword(node, self.operators['while'])
+        start_by_keyword(node, self.operators['while'], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
         if node.orelse:
             min_first_max_last(node, node.orelse[-1])
 
     @visit_stmt
     def visit_For(self, node, keyword='for'):
-        start_by_keyword(node, self.operators[keyword])
+        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
         if node.orelse:
             min_first_max_last(node, node.orelse[-1])
@@ -584,7 +632,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_stmt
     def visit_Print(self, node):
         """ Python 2 """
-        start_by_keyword(node, self.operators['print'])
+        start_by_keyword(node, self.operators['print'], self.bytes_pos_to_utf8)
         if node.dest:
             min_first_max_last(node, node.dest)
         if node.values:
@@ -617,13 +665,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_Delete(self, node):
-        start_by_keyword(node, self.operators['del'])
+        start_by_keyword(node, self.operators['del'], self.bytes_pos_to_utf8)
         for target in node.targets:
             min_first_max_last(node, target)
 
     @visit_stmt
     def visit_Return(self, node):
-        start_by_keyword(node, self.operators['return'])
+        start_by_keyword(node, self.operators['return'],
+                         self.bytes_pos_to_utf8)
         if node.value:
             min_first_max_last(node, node.value)
 
@@ -635,7 +684,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_ClassDef(self, node):
-        start_by_keyword(node, self.operators['class'])
+        start_by_keyword(node, self.operators['class'], self.bytes_pos_to_utf8)
 
         for dec in node.decorator_list:
             min_first_max_last(node, dec)
@@ -656,7 +705,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_FunctionDef(self, node, keyword='def'):
-        start_by_keyword(node, self.operators[keyword])
+        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         previous, last = self.parenthesis.find_next(node.uid)
         self.update_arguments(node.args, inc_tuple(previous), dec_tuple(last))
 

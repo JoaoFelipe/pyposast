@@ -63,6 +63,12 @@ class TestMisc(NodeTestCase):
         nodes = get_nodes(code, ast.Slice)
         self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 3))
 
+    def test_slice8(self):
+        code = ("s = None\n"
+                "a[::]")
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 4), (2, 3))
+
     def test_ext_slice(self):
         code = ("#bla\n"
                 "a[1:2,3]")

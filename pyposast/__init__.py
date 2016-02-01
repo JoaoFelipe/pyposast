@@ -5,7 +5,8 @@
 from __future__ import (absolute_import, division)
 
 import ast
-from .visitor import LineProvenanceVisitor as Visitor
+from .visitor import LineProvenanceVisitor as Visitor, extract_code
+from .cross_version import native_decode_source, decode_source_to_unicode
 
 
 def parse(code, filename='<unknown>', mode='exec'):
@@ -50,32 +51,3 @@ def get_nodes(code, desired_type, path="__main__", mode="exec"):
     return _GetVisitor(parse(code, path, mode), desired_type).result
 
 
-def extract_code(lines, node, lstrip="", ljoin="\n", strip=""):
-    """Get corresponding text in the code
-
-
-    Arguments:
-    lines -- code splitted by linebreak
-    node -- PyPosAST enhanced node
-
-
-    Keyword Arguments:
-    lstrip -- During extraction, strip lines with this arg (default="")
-    ljoin -- During extraction, join lines with this arg (default="\n")
-    strip -- After extraction, strip all code with this arg (default="")
-    """
-    first_line, first_col = node.first_line - 1, node.first_col
-    last_line, last_col = node.last_line - 1, node.last_col
-    if first_line == last_line:
-        return lines[first_line][first_col:last_col].strip(strip)
-
-    result = []
-    # Add first line
-    result.append(lines[first_line][first_col:].strip(lstrip))
-    # Add middle lines
-    if first_line + 1 != last_line:
-        for line in range(first_line + 1, last_line):
-            result.append(lines[line].strip(lstrip))
-    # Add last line
-    result.append(lines[last_line][:last_col].strip(lstrip))
-    return ljoin.join(result).strip(strip)

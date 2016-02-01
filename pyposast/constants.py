@@ -64,5 +64,5 @@ if sys.version_info >= (3, 0):
 if sys.version_info >= (3, 5):
     # async and await will be promoted to keyword in 3.7
     SEMI_KEYWORDS += ['async', 'await']
-    OPERATORS[ast.MatMult] = ('@',)
+    OPERATORS[ast.MatMult] = ('@', '@=')
 

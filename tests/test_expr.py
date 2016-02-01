@@ -1,3 +1,4 @@
+# coding: utf-8
 # Copyright (c) 2016 Universidade Federal Fluminense (UFF)
 # This file is part of PyPosAST.
 # Please, consult the license terms in the LICENSE file.
@@ -204,6 +205,12 @@ class TestExpr(NodeTestCase):
                 "[1])")
         nodes = get_nodes(code, ast.Subscript)
         self.assertPosition(nodes[0], (2, 0), (3, 4), (3, 4))
+
+    def test_subscript5(self):
+        code = (u"#bla\n"
+                u"f('Ç', ns['u'])\n")
+        nodes = get_nodes(code, ast.Subscript)
+        self.assertPosition(nodes[0], (2, 7), (2, 14), (2, 14))
 
     def test_tuple(self):
         code = ("#bla\n"

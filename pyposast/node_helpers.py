@@ -20,7 +20,7 @@ def nprint(node):
     d = dir(node)
     print('-----------')
     print('class:', node.__class__)
-    print('dir:', d)
+    # print('dir:', d)
     if 'lineno' in d:
         print('ast:', (node.lineno, node.col_offset))
     if 'first_line' in d:
@@ -31,6 +31,7 @@ def nprint(node):
         print('op_pos:', node.op_pos)
     print('-----------')
 
+
 def copy_info(node_to, node_from):
     node_to.first_line = node_from.first_line
     node_to.first_col = node_from.first_col
@@ -39,11 +40,16 @@ def copy_info(node_to, node_from):
     node_to.uid = node_from.uid
 
 
-def copy_from_lineno_col_offset(node, identifier):
-    node.first_line, node.first_col = node.lineno, node.col_offset
+def ast_pos(node, bytes_pos_to_utf8):
+    bytes_pos = bytes_pos_to_utf8[node.lineno - 1]
+    return node.lineno, bytes_pos.get(node.col_offset)
+
+
+def copy_from_lineno_col_offset(node, identifier, bytes_pos_to_utf8):
+    node.first_line, node.first_col = ast_pos(node, bytes_pos_to_utf8)
     node.last_line = node.lineno
     len_id = len(identifier)
-    node.last_col = node.col_offset + len_id
+    node.last_col = node.first_col + len_id
     node.uid = (node.last_line, node.last_col)
 
 
@@ -81,9 +87,8 @@ def r_set_previous_element(node, previous, element_dict):
     r_set_pos(node, *element_dict.find_previous(position))
 
 
-def keyword_followed_by_ids(node, keyword, names, ids):
-    position = (node.lineno, node.col_offset)
-    node.uid, first = keyword.find_next(position)
+def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
+    node.uid, first = keyword.find_next(ast_pos(node, bytes_pos_to_utf8))
     node.first_line, node.first_col = first
     last = node.uid
     for name in ids:
@@ -91,8 +96,9 @@ def keyword_followed_by_ids(node, keyword, names, ids):
 
     node.last_line, node.last_col = last
 
-def start_by_keyword(node, keyword, set_last=True):
-    position = (node.lineno, node.col_offset)
+
+def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True):
+    position = ast_pos(node, bytes_pos_to_utf8)
     try:
         node.uid, first = keyword.find_next(position)
         if first != position:
@@ -102,6 +108,7 @@ def start_by_keyword(node, keyword, set_last=True):
     node.first_line, node.first_col = first
     if set_last:
         node.last_line, node.last_col = node.uid
+
 
 def update_expr_parenthesis(code, parenthesis, node):
     position = (node.first_line, node.first_col)
@@ -128,6 +135,7 @@ def update_expr_parenthesis(code, parenthesis, node):
         node.last_line, node.last_col = end_tuple
 
         update_expr_parenthesis(code, parenthesis, node)
+
 
 def increment_node_position(code, node):
     first = (node.first_line, node.first_col)
