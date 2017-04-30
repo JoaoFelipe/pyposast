@@ -8,7 +8,7 @@ from __future__ import (absolute_import, division)
 import ast
 
 from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35
+from .utils import only_python2, only_python3, only_python35, only_python36
 
 def nprint(nodes):
     for i, node in enumerate(nodes):
@@ -690,3 +690,51 @@ class TestExpr(NodeTestCase):
                 "from  2)")
         nodes = get_nodes(code, ast.YieldFrom)
         self.assertPosition(nodes[0], (2, 0), (3, 8), (3, 4))
+
+    @only_python36
+    def test_joined_str(self):
+        code = ("#bla\n"
+                "a = 2\n"
+                "f'{a}'\n")
+        nodes = get_nodes(code, ast.JoinedStr)
+        self.assertPosition(nodes[0], (3, 0), (3, 6), (3, 6))
+
+    @only_python36
+    def test_formatted_value(self):
+        code = ("#bla\n"
+                "a = 2\n"
+                "f'{a}'\n")
+        nodes = get_nodes(code, ast.FormattedValue)
+        names = get_nodes(code, ast.Name)
+        self.assertPosition(nodes[0], (3, 2), (3, 5), (3, 5))
+        self.assertPosition(names[0], (2, 0), (2, 1), (2, 1))
+        self.assertPosition(names[1], (3, 3), (3, 4), (3, 4))
+
+    @only_python36
+    def test_formatted_value2(self):
+        code = ("#bla\n"
+                "import decimal\n"
+                "width, precision = 10, 4\n"
+                "value = decimal.Decimal('12.34567')\n"
+                "f'result: {value:{width}.{precision}}'\n")
+        nodes = get_nodes(code, ast.FormattedValue)
+        self.assertPosition(nodes[0], (5, 10), (5, 37), (5, 37))
+
+
+    @only_python36
+    def test_constant(self):
+        code = ("#bla\n"
+                "x = 2\n")
+
+        # Constants are created by optimizers
+        # Thus, we must simulate an optimizer
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Num):
+                node.value = ast.copy_location(
+                    ast.Constant(node.value.n),
+                    node.value
+                )
+
+        nodes = get_nodes(code, ast.Constant, tree=tree)
+        self.assertPosition(nodes[0], (2, 4), (2, 5), (2, 5))

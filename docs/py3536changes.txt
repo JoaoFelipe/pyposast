@@ -1,0 +1,10 @@
+stmt =
++     | AnnAssign(expr target, expr annotation, expr? value, int simple)
+
+expr =
++     | FormattedValue(expr value, int? conversion, expr? format_spec)
++     | JoinedStr(expr* values)
++     | Constant(constant value)
+
+comprehension = (expr target, expr iter, expr* ifs,
++                int is_async)

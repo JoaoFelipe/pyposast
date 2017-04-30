@@ -45,12 +45,14 @@ def ast_pos(node, bytes_pos_to_utf8):
     return node.lineno, bytes_pos.get(node.col_offset)
 
 
-def copy_from_lineno_col_offset(node, identifier, bytes_pos_to_utf8):
-    node.first_line, node.first_col = ast_pos(node, bytes_pos_to_utf8)
-    node.last_line = node.lineno
+def copy_from_lineno_col_offset(node, identifier, bytes_pos_to_utf8, to=None):
+    if to is None:
+        to = node
+    to.first_line, to.first_col = ast_pos(node, bytes_pos_to_utf8)
+    to.last_line = node.lineno
     len_id = len(identifier)
-    node.last_col = node.first_col + len_id
-    node.uid = (node.last_line, node.last_col)
+    to.last_col = to.first_col + len_id
+    to.uid = (to.last_line, to.last_col)
 
 
 def set_pos(node, first, last):

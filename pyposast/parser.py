@@ -62,87 +62,127 @@ class StackElement(dict):
             self[self.stack.pop()] = t_erow_ecol
 
 
+def apply_delta(original, dline, doffset):
+    return (original[0] + dline, original[1] + doffset)
+
+
+class TokenCollector(object):
+
+    def __init__(self):
+        self.stacks = self.parenthesis, self.sbrackets, self.brackets = [
+            StackElement(*x) for x in (('(', ')'), ('[', ']'), ('{', '}'))
+        ]
+        self.strings, self.attributes, self.numbers = {}, {}, {}
+        self.operators = defaultdict(dict)
+        self.names = defaultdict(dict)
+        self.tokens = []
+
+    def loop(self, code, dline=0, doffset=0):
+        last = None
+        dots = 0 # number of dots
+        first_dot = None
+
+        f = StringIO(code)
+        for tok in tokenize.generate_tokens(f.readline):
+            self.tokens.append(tok)
+            t_type, t_string, t_srow_scol, t_erow_ecol, t_line = tok
+            # ToDo: apply delta
+            t_srow_scol = apply_delta(t_srow_scol, dline, doffset)
+            t_erow_ecol = apply_delta(t_erow_ecol, dline, doffset)
+            tok = [t_type, t_string, t_srow_scol, t_erow_ecol, t_line]
+            tok.append(False) # Should wait the next step
+            if t_type == tokenize.OP:
+                for stack in self.stacks:
+                    stack.check(t_string, t_srow_scol, t_erow_ecol)
+                if t_string == '.':
+                    if not dots:
+                        first_dot = tok
+                    dots += 1
+                    if dots == 3: # Python 2
+                        self.operators['...'][t_erow_ecol] = first_dot[2]
+                        dots = 0
+                        first_dot = None
+                self.operators[t_string][t_erow_ecol] = t_srow_scol
+            elif t_type == tokenize.STRING:
+                if t_string.startswith('f'): # Python 3.6
+                    inner = t_string[2:-1]
+                    stack = []
+                    for index, char in enumerate(inner):
+                        if char == "{":
+                            if not stack or stack[-1] != index - 1:
+                                stack.append(index)
+                        if char == "}" and stack:
+                            oindex = stack.pop()
+                            sub = inner[oindex + 1:index]
+                            self.brackets.check(
+                                "{",
+                                apply_delta(t_srow_scol, 0, oindex + 2),
+                                apply_delta(t_srow_scol, 0, oindex + 3),
+                            )
+                            self.brackets.check(
+                                "}",
+                                apply_delta(t_srow_scol, 0, index + 2),
+                                apply_delta(t_srow_scol, 0, index + 3),
+                            )
+                            self.loop(sub, t_srow_scol[0] - 1, oindex + 2)
+
+                start = t_srow_scol
+                if last and last[0] == tokenize.STRING:
+                    start = self.strings[last[3]]
+                    del self.strings[last[3]]
+                self.strings[t_erow_ecol] = start
+            elif t_type == tokenize.NUMBER:
+                self.numbers[t_erow_ecol] = t_srow_scol
+            elif t_type == tokenize.NAME and t_string in KEYWORDS:
+                self.operators[t_string][t_erow_ecol] = t_srow_scol
+            elif t_type == tokenize.NAME and dots == 1:
+                self.attributes[t_erow_ecol] = first_dot[2]
+                dots = 0
+                first_dot = None
+            elif t_type == tokenize.NAME and t_string == 'elif':
+                self.operators['if'][t_erow_ecol] = t_srow_scol
+            elif t_type == tokenize.NAME and t_string in PAST_KEYWORKDS.keys():
+                if last and last[1] == PAST_KEYWORKDS[t_string]:
+                    combined = "{} {}".format(PAST_KEYWORKDS[t_string], t_string)
+                    self.operators[combined][t_erow_ecol] = last[2]
+                elif t_string in FUTURE_KEYWORDS:
+                    tok[5] = True
+                else:
+                    self.operators[t_string][t_erow_ecol] = t_srow_scol
+            elif t_type == tokenize.NAME and t_string in FUTURE_KEYWORDS:
+                tok[5] = True
+            elif t_string in SEMI_KEYWORDS:
+                self.operators[t_string][t_erow_ecol] = t_srow_scol
+
+            if t_string != '.':
+                dots = 0
+            if last and last[1] in FUTURE_KEYWORDS and last[5]:
+                self.operators[last[1]][last[3]] = last[2]
+
+            if t_type == tokenize.NAME or t_string == 'None':
+                self.names[t_string][t_erow_ecol] = t_srow_scol
+            if t_type != tokenize.NL:
+                last = tok
+    
+
 def extract_tokens(code, return_tokens=False):
     # Should I implement a LL 1 parser?
-    stacks = parenthesis, sbrackets, brackets = [
-        StackElement(*x) for x in (('(', ')'), ('[', ']'), ('{', '}'))
-    ]
-    strings, attributes, numbers = {}, {}, {}
-    result = [
-        parenthesis, sbrackets, brackets, strings, attributes, numbers,
-    ]
-    operators = defaultdict(dict)
-    names = defaultdict(dict)
-
-    parenthesis_stack = []
-    sbrackets_stack = []
-    tokens = []
-    last = None
-
-    dots = 0 # number of dots
-    first_dot = None
-
-    f = StringIO(code)
-    for tok in tokenize.generate_tokens(f.readline):
-        tokens.append(tok)
-        t_type, t_string, t_srow_scol, t_erow_ecol, t_line = tok
-        tok = list(tok)
-        tok.append(False) # Should wait the next step
-        if t_type == tokenize.OP:
-            for stack in stacks:
-                stack.check(t_string, t_srow_scol, t_erow_ecol)
-            if t_string == '.':
-                if not dots:
-                    first_dot = tok
-                dots += 1
-                if dots == 3: # Python 2
-                    operators['...'][t_erow_ecol] = first_dot[2]
-                    dots = 0
-                    first_dot = None
-            operators[t_string][t_erow_ecol] = t_srow_scol
-        elif t_type == tokenize.STRING:
-            start = t_srow_scol
-            if last and last[0] == tokenize.STRING:
-                start = strings[last[3]]
-                del strings[last[3]]
-            strings[t_erow_ecol] = start
-        elif t_type == tokenize.NUMBER:
-            numbers[t_erow_ecol] = t_srow_scol
-        elif t_type == tokenize.NAME and t_string in KEYWORDS:
-            operators[t_string][t_erow_ecol] = t_srow_scol
-        elif t_type == tokenize.NAME and dots == 1:
-            attributes[t_erow_ecol] = first_dot[2]
-            dots = 0
-            first_dot = None
-        elif t_type == tokenize.NAME and t_string == 'elif':
-            operators['if'][t_erow_ecol] = t_srow_scol
-        elif t_type == tokenize.NAME and t_string in PAST_KEYWORKDS.keys():
-            if last and last[1] == PAST_KEYWORKDS[t_string]:
-                combined = "{} {}".format(PAST_KEYWORKDS[t_string], t_string)
-                operators[combined][t_erow_ecol] = last[2]
-            elif t_string in FUTURE_KEYWORDS:
-                tok[5] = True
-            else:
-                operators[t_string][t_erow_ecol] = t_srow_scol
-        elif t_type == tokenize.NAME and t_string in FUTURE_KEYWORDS:
-            tok[5] = True
-        elif t_string in SEMI_KEYWORDS:
-            operators[t_string][t_erow_ecol] = t_srow_scol
-
-        if t_string != '.':
-            dots = 0
-        if last and last[1] in FUTURE_KEYWORDS and last[5]:
-            operators[last[1]][last[3]] = last[2]
-
-        if t_type == tokenize.NAME or t_string == 'None':
-            names[t_string][t_erow_ecol] = t_srow_scol
-        if t_type != tokenize.NL:
-            last = tok
+    toc = TokenCollector()
+    toc.loop(code)
 
     if return_tokens:
-        return tokens
+        return toc.tokens
 
-    result = [ElementDict(sorted(x.items())) for x in result]
-    operators = {k: ElementDict(sorted(v.items())) for k, v in operators.items()}
-    names = {k: ElementDict(sorted(v.items())) for k, v in names.items()}
+    result = [
+        ElementDict(sorted(toc.parenthesis.items())),
+        ElementDict(sorted(toc.sbrackets.items())),
+        ElementDict(sorted(toc.brackets.items())),
+        ElementDict(sorted(toc.strings.items())),
+        ElementDict(sorted(toc.attributes.items())),
+        ElementDict(sorted(toc.numbers.items())),
+    ]
+    operators = {k: ElementDict(sorted(v.items()))
+                 for k, v in toc.operators.items()}
+    names = {k: ElementDict(sorted(v.items()))
+             for k, v in toc.names.items()}
     return result, operators, names
