@@ -454,6 +454,17 @@ class TestExpr(NodeTestCase):
         nodes = get_nodes(code, ast.ListComp)
         self.assertPosition(nodes[0], (2, 0), (4, 7), (4, 7))
 
+    @only_python36
+    def test_async_comp(self):
+        code = ("#bla\n"
+                "async def f():\n"
+                "    [x\n"
+                "     async for x in l\n"
+                "     if x]")
+        nodes = get_nodes(code, ast.ListComp)
+        self.assertPosition(nodes[0], (3, 4), (5, 10), (5, 10))
+
+
     def test_set(self):
         code = ("#bla\n"
                 "{x,\n"

@@ -702,6 +702,23 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.uid = node.op_pos.uid
 
     @visit_stmt
+    def visit_AnnAssign(self, node):
+        set_max_position(node)
+        min_first_max_last(node, node.target)
+        min_first_max_last(node, node.annotation)
+        node.op_pos = []
+        node.op_pos.append(
+            self.calculate_infixop(node, node.target, node.annotation)
+        )
+        if node.value:
+            min_first_max_last(node, node.value)
+            node.op_pos.append(
+                self.calculate_infixop(node, node.annotation, node.value)
+            )
+
+        node.uid = node.op_pos[0].uid
+
+    @visit_stmt
     def visit_Assign(self, node):
         node.op_pos = []
         set_max_position(node)

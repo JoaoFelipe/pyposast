@@ -7,7 +7,7 @@ from __future__ import (absolute_import, division)
 import ast
 
 from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35
+from .utils import only_python2, only_python3, only_python35, only_python36
 
 
 def nprint(nodes):
@@ -356,6 +356,31 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.AugAssign)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 4))
         self.assertPosition(nodes[0].op_pos, (2, 2), (2, 4), (2, 4))
+
+    @only_python36
+    def test_ann_assign(self):
+        code = ("#bla\n"
+                "a: int = 1")
+        nodes = get_nodes(code, ast.AnnAssign)
+        self.assertPosition(nodes[0], (2, 0), (2, 10), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+
+    @only_python36
+    def test_ann_assign2(self):
+        code = ("#bla\n"
+                "a: int")
+        nodes = get_nodes(code, ast.AnnAssign)
+        self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2))
+
+    @only_python36
+    def test_ann_assign3(self):
+        code = ("#bla\n"
+                "(a): int")
+        nodes = get_nodes(code, ast.AnnAssign)
+        self.assertPosition(nodes[0], (2, 0), (2, 8), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4))
 
     def test_assign(self):
         code = ("#bla\n"

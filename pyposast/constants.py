@@ -51,6 +51,7 @@ OPERATORS = {
     ast.Assign: ('=',),
 }
 
+
 if sys.version_info < (3, 0):
     # Python 2
     KEYWORDS += ['exec', 'print', 'from', 'yield']
@@ -66,3 +67,5 @@ if sys.version_info >= (3, 5):
     SEMI_KEYWORDS += ['async', 'await']
     OPERATORS[ast.MatMult] = ('@', '@=')
 
+if sys.version_info >= (3, 6):
+    OPERATORS[ast.AnnAssign] = (':', '=')
