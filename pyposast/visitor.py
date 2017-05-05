@@ -179,15 +179,26 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         r_set_pos(node, *self.strings.find_next(position))
 
     @only_python36
-    @visit_expr
     def visit_JoinedStr(self, node):
+        position = self.dposition(node)
+        last_position = (node.lineno, node.col_offset)
+        for value in node.values:
+            if isinstance(value, ast.FormattedValue):
+                value.bracket = self.brackets.find_next(last_position)
+                self.visit(value)
+                last_position = (
+                    value.bracket[0][0],
+                    value.bracket[0][1] + 1,
+                )
+
+            else:
+                self.visit(value)
         position = self.dposition(node)
         r_set_pos(node, *self.strings.find_next(position))
 
     @only_python36
     def visit_FormattedValue(self, node):
-        position = self.dposition(node)
-        set_pos(node, *self.brackets.find_next(position))
+        set_pos(node, *node.bracket)
         self.dline += node.first_line - 1
         self.dcol += node.first_col
         self.visit(node.value)

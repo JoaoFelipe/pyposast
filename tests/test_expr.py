@@ -731,6 +731,16 @@ class TestExpr(NodeTestCase):
         nodes = get_nodes(code, ast.FormattedValue)
         self.assertPosition(nodes[0], (5, 10), (5, 37), (5, 37))
 
+    @only_python36
+    def test_formatted_value3(self):
+        code = ("#bla\n"
+                "a = 1\n"
+                "b = 2\n"
+                "d = f'a: {a}; b: {b}'\n"
+                "# other")
+        nodes = get_nodes(code, ast.FormattedValue)
+        self.assertPosition(nodes[0], (4, 9), (4, 12), (4, 12))
+        self.assertPosition(nodes[1], (4, 17), (4, 20), (4, 20))
 
     @only_python36
     def test_constant(self):
