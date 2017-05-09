@@ -12,7 +12,7 @@ except (IOError, ImportError):
 
 setup(
     name="PyPosAST",
-    version="1.2.1",
+    version="1.2.2",
     description="Extends Python ast nodes with positional informations",
     long_description=long_description,
     packages=find_packages(exclude=["tests_*", "tests"]),

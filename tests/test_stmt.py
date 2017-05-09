@@ -456,6 +456,17 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.FunctionDef)
         self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 3))
 
+    def test_function_def4(self):
+        code = ("#bla\n"
+                "def g(x):\n"
+                "    return x\n"
+                "@g\n"
+                "def f():\n"
+                "    pass")
+        nodes = get_nodes(code, ast.FunctionDef)
+        self.assertPosition(nodes[0], (2, 0), (3, 12), (2, 3))
+        self.assertPosition(nodes[1], (4, 0), (6, 8), (5, 3))
+
     @only_python35
     def test_async_function_def(self):
         code = ("#bla\n"

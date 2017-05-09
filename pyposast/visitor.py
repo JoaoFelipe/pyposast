@@ -788,6 +788,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_FunctionDef(self, node, keyword='def'):
+        lineno, col_offset = node.lineno, node.col_offset
+        for dec in node.decorator_list:
+            node.lineno = max(node.lineno, dec.last_line + 1)
         start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         previous, last = self.parenthesis.find_next(node.uid)
         self.update_arguments(node.args, inc_tuple(previous), dec_tuple(last))
@@ -797,6 +800,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             self.adjust_decorator(node, dec)
 
         min_first_max_last(node, node.body[-1])
+        node.lineno = lineno
 
     @visit_stmt
     def visit_AsyncFunctionDef(self, node):
