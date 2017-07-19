@@ -17,6 +17,13 @@ class NodeWithPosition(object):
         self.first_line, self.first_col = first
         self.uid = self.last_line, self.last_col = last
 
+    def __repr__(self):
+        return (
+            "Node("
+            "({0.first_line}, {0.first_col}), "
+            "({0.last_line}, {0.last_col}), "
+            "{0.uid})"
+        ).format(self)
 
 def nprint(node):
     d = dir(node)

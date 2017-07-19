@@ -128,25 +128,28 @@ def find_next_parenthesis(code, position, parenthesis):
         return inc_tuple(end.tuple())
     return
 
+
+def find_next_character(code, position, char):
+    """Find next char and return its first and last positions"""
+    end = LineCol(code, *position)
+    while not end.eof and end.char() in WHITESPACE:
+        end.inc()
+
+    if not end.eof and end.char() == char:
+        return end.tuple(), inc_tuple(end.tuple())
+    return None, None
+
 def find_next_comma(code, position):
     """Find next comman and return its first and last positions"""
-    end = LineCol(code, *position)
-    while not end.eof and end.char() in WHITESPACE:
-        end.inc()
-
-    if not end.eof and end.char() == ",":
-        return end.tuple(), inc_tuple(end.tuple())
-    return None, None
+    return find_next_character(code, position, ',')
 
 def find_next_colon(code, position):
-    """Find next comman and return its first and last positions"""
-    end = LineCol(code, *position)
-    while not end.eof and end.char() in WHITESPACE:
-        end.inc()
+    """Find next colon and return its first and last positions"""
+    return find_next_character(code, position, ':')
 
-    if not end.eof and end.char() == ":":
-        return end.tuple(), inc_tuple(end.tuple())
-    return None, None
+def find_next_equal(code, position):
+    """Find next equal sign and return its first and last positions"""
+    return find_next_character(code, position, '=')
 
 def extract_positions(utf8):
     j = 0
