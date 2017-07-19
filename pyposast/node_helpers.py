@@ -4,6 +4,8 @@
 
 from __future__ import (absolute_import, division, unicode_literals)
 
+from copy import copy
+
 from .constants import WHITESPACE
 from .utils import (inc_tuple, dec_tuple, LineCol, position_between,
                     find_in_between)
@@ -93,8 +95,10 @@ def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
     node.uid, first = keyword.find_next(ast_pos(node, bytes_pos_to_utf8))
     node.first_line, node.first_col = first
     last = node.uid
+    node.ids_pos = []
     for name in ids:
-        last, _ = names[name].find_next(last)
+        last, first = names[name].find_next(last)
+        node.ids_pos.append(NodeWithPosition(last, first))
 
     node.last_line, node.last_col = last
 
@@ -113,23 +117,28 @@ def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True):
 
 
 def update_expr_parenthesis(code, parenthesis, node):
+    """Find parenthesis before and after node"""
     position = (node.first_line, node.first_col)
-    p1, p2 = find_in_between(position, parenthesis)
-    if not p1:
+    open_paren, close_paren = find_in_between(position, parenthesis)
+    if not open_paren:
+        # There is not opening parenthesis
         return
-    p1, p2 = LineCol(code, *p1), LineCol(code, *dec_tuple(p2))
+    open_paren = LineCol(code, *open_paren)
+    close_paren = LineCol(code, *dec_tuple(close_paren))
 
     start = LineCol(code, node.first_line, node.first_col)
     end = LineCol(code, node.last_line, node.last_col)
-    start.dec()
+    original_start = copy(start)
+    original_end = copy(end)
 
-    while start > p1 and not start.bof and start.char() in WHITESPACE:
+    start.dec()
+    while start > open_paren and not start.bof and start.char() in WHITESPACE:
         start.dec()
 
-    while end < p2 and not end.eof and end.char() in WHITESPACE:
+    while end < close_paren and not end.eof and end.char() in WHITESPACE:
         end.inc()
 
-    if start == p1 and end == p2:
+    if start == open_paren and end == close_paren:
         end_tuple = inc_tuple(end.tuple())
         node.first_line, node.first_col = start.tuple()
         if node.uid == (node.last_line, node.last_col):
@@ -138,15 +147,60 @@ def update_expr_parenthesis(code, parenthesis, node):
 
         update_expr_parenthesis(code, parenthesis, node)
 
+        node.pos_before = NodeWithPosition(
+            original_start.tuple(),
+            (node.first_line, node.first_col),
+        )
+        node.pos_inner = NodeWithPosition(
+            original_end.tuple(),
+            original_start.tuple(),
+        )
+        node.pos_after = NodeWithPosition(
+            (node.last_line, node.last_col),
+            original_end.tuple(),
+        )
 
-def increment_node_position(code, node):
-    first = (node.first_line, node.first_col)
-    last = (node.last_line, node.last_col)
-    p1, p2 = LineCol(code, *first), LineCol(code, *last)
-    p1.inc()
-    p2.dec()
-    start, end = position_between(code, p1.tuple(), p2.tuple())
+
+def update_position_between_cursors(code, node, start, end):
+    """Update node position according to LineCols"""
+    if isinstance(start, LineCol):
+        start = start.tuple()
+    if isinstance(end, LineCol):
+        end = end.tuple()
+    start, end = position_between(code, start, end)
     node.first_line, node.first_col = start
     if node.uid == (node.last_line, node.last_col):
         node.uid = end
     (node.last_line, node.last_col) = end
+
+
+def increment_node_position(code, node):
+    """Increment start position and decrement end position
+    It is used to remove parenthesis on calls with a single argument"""
+    first = (node.first_line, node.first_col)
+    last = (node.last_line, node.last_col)
+    cursor1, cursor2 = LineCol(code, *first), LineCol(code, *last)
+    cursor1.inc()
+    cursor2.dec()
+    update_position_between_cursors(code, node, cursor1, cursor2)
+    if hasattr(node, 'pos_before'):
+        before = node.pos_before
+        update_position_between_cursors(
+            code, before,
+            cursor1,
+            (before.last_line, before.last_col)
+        )
+        if (before.last_line, before.last_col) == cursor1.tuple():
+            del node.pos_before
+    if hasattr(node, 'pos_after'):
+        after = node.pos_after
+        update_position_between_cursors(
+            code, after,
+            (after.first_line, after.first_col),
+            cursor2,
+        )
+        if (after.last_line, after.last_col) == cursor2.tuple():
+            del node.pos_after
+    if hasattr(node, 'pos_inner'):
+        if not hasattr(node, 'pos_before') and not hasattr(node, 'pos_after'):
+            del node.pos_inner

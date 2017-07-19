@@ -16,19 +16,23 @@ class TestMod(NodeTestCase):
                 "")
         nodes = get_nodes(code, ast.Module)
         self.assertPosition(nodes[0], (0, 0), (0, 0), (0, 0))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_module2(self):
         code = ("#bla\n"
                 "a")
         nodes = get_nodes(code, ast.Module)
         self.assertPosition(nodes[0], (2, 0), (2, 1), (2, 1))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_interactive(self):
         code = ("a")
         nodes = get_nodes(code, ast.Interactive, mode='single')
         self.assertPosition(nodes[0], (1, 0), (1, 1), (1, 1))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_expression(self):
         code = ("a")
         nodes = get_nodes(code, ast.Expression, mode='eval')
         self.assertPosition(nodes[0], (1, 0), (1, 1), (1, 1))
+        self.assertNoBeforeInnerAfter(nodes[0])

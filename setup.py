@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-from ez_setup import use_setuptools
-use_setuptools()
-
 from setuptools import setup, find_packages
 
 try:
@@ -12,7 +9,7 @@ except (IOError, ImportError):
 
 setup(
     name="PyPosAST",
-    version="1.2.2",
+    version="1.3.0",
     description="Extends Python ast nodes with positional informations",
     long_description=long_description,
     packages=find_packages(exclude=["tests_*", "tests"]),

@@ -5,6 +5,7 @@
 from __future__ import (absolute_import, division)
 
 import ast
+import sys
 
 from .utils import get_nodes, NodeTestCase
 from .utils import only_python2, only_python3, only_python35, only_python36
@@ -16,30 +17,35 @@ def nprint(nodes):
 
 
 class TestStmt(NodeTestCase):
+    # pylint: disable=missing-docstring, too-many-public-methods
 
     def test_pass(self):
         code = ("#bla\n"
                 "pass")
         nodes = get_nodes(code, ast.Pass)
         self.assertPosition(nodes[0], (2, 0), (2, 4), (2, 4))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_break(self):
         code = ("#bla\n"
                 "break")
         nodes = get_nodes(code, ast.Break)
         self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_continue(self):
         code = ("#bla\n"
                 "continue")
         nodes = get_nodes(code, ast.Continue)
         self.assertPosition(nodes[0], (2, 0), (2, 8), (2, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_expr(self):
         code = ("#bla\n"
                 "a")
         nodes = get_nodes(code, ast.Expr)
         self.assertPosition(nodes[0], (2, 0), (2, 1), (2, 1))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3
     def test_non_local(self):
@@ -48,6 +54,9 @@ class TestStmt(NodeTestCase):
                 "b")
         nodes = get_nodes(code, ast.Nonlocal)
         self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 8))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 8), (2, 8))
+        self.assertPosition(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_global(self):
         code = ("#bla\n"
@@ -55,6 +64,9 @@ class TestStmt(NodeTestCase):
                 "b")
         nodes = get_nodes(code, ast.Global)
         self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertPosition(nodes[0].op_pos[1], (2, 8), (2, 9), (2, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_exec(self):
@@ -63,6 +75,10 @@ class TestStmt(NodeTestCase):
                 "b, c")
         nodes = get_nodes(code, ast.Exec)
         self.assertPosition(nodes[0], (2, 0), (3, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 9), (2, 9))
+        self.assertPosition(nodes[0].op_pos[2], (3, 1), (3, 2), (3, 2))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_exec2(self):
@@ -70,6 +86,8 @@ class TestStmt(NodeTestCase):
                 "exec a")
         nodes = get_nodes(code, ast.Exec)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_import_from(self):
         code = ("#bla\n"
@@ -77,6 +95,9 @@ class TestStmt(NodeTestCase):
                 "Expr as e")
         nodes = get_nodes(code, ast.ImportFrom)
         self.assertPosition(nodes[0], (2, 0), (3, 9), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (2, 9), (2, 15), (2, 15))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_import_from2(self):
         code = ("#bla\n"
@@ -84,18 +105,27 @@ class TestStmt(NodeTestCase):
                 "Expr as e )")
         nodes = get_nodes(code, ast.ImportFrom)
         self.assertPosition(nodes[0], (2, 0), (3, 11), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (2, 9), (2, 15), (2, 15))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_import_from3(self):
         code = ("#bla\n"
                 "from . import get_config")
         nodes = get_nodes(code, ast.ImportFrom)
         self.assertPosition(nodes[0], (2, 0), (2, 24), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 13), (2, 13))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_import_from4(self):
         code = ("#bla\n"
                 "from . import *")
         nodes = get_nodes(code, ast.ImportFrom)
         self.assertPosition(nodes[0], (2, 0), (2, 15), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 13), (2, 13))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_import(self):
         code = ("#bla\n"
@@ -103,12 +133,16 @@ class TestStmt(NodeTestCase):
                 "b as c")
         nodes = get_nodes(code, ast.Import)
         self.assertPosition(nodes[0], (2, 0), (3, 6), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_import2(self):
         code = ("#bla\n"
                 "import ab.cd. ef as gh")
         nodes = get_nodes(code, ast.Import)
         self.assertPosition(nodes[0], (2, 0), (2, 22), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_assert(self):
         code = ("#bla\n"
@@ -116,12 +150,17 @@ class TestStmt(NodeTestCase):
                 "b")
         nodes = get_nodes(code, ast.Assert)
         self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertPosition(nodes[0].op_pos[1], (2, 8), (2, 9), (2, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_assert2(self):
         code = ("#bla\n"
                 "assert(a)")
         nodes = get_nodes(code, ast.Assert)
         self.assertPosition(nodes[0], (2, 0), (2, 9), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_try_finally(self):
@@ -132,6 +171,9 @@ class TestStmt(NodeTestCase):
                 "    b")
         nodes = get_nodes(code, ast.TryFinally)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (4, 0), (4, 8), (4, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_try_except(self):
@@ -142,6 +184,10 @@ class TestStmt(NodeTestCase):
                 "    b")
         nodes = get_nodes(code, ast.TryExcept)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (4, 0), (4, 6), (4, 6))
+        self.assertPosition(nodes[0].op_pos[2], (4, 39), (4, 40), (4, 40))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_try_except2(self):
@@ -156,8 +202,14 @@ class TestStmt(NodeTestCase):
                 "    d")
         nodes = get_nodes(code, ast.TryExcept)
         self.assertPosition(nodes[0], (2, 0), (7, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (4, 0), (4, 6), (4, 6))
+        self.assertPosition(nodes[0].op_pos[2], (4, 39), (4, 40), (4, 40))
+        self.assertPosition(nodes[0].op_pos[3], (6, 0), (6, 5), (6, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
         nodes = get_nodes(code, ast.TryFinally)
         self.assertPosition(nodes[0], (2, 0), (9, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (8, 0), (8, 8), (8, 8))
 
     @only_python3
     def test_try(self):
@@ -172,12 +224,20 @@ class TestStmt(NodeTestCase):
                 "    d")
         nodes = get_nodes(code, ast.Try)
         self.assertPosition(nodes[0], (2, 0), (9, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[1], (4, 0), (4, 6), (4, 6))
+        self.assertPosition(nodes[0].op_pos[2], (4, 41), (4, 42), (4, 42))
+        self.assertPosition(nodes[0].op_pos[3], (6, 0), (6, 5), (6, 5))
+        self.assertPosition(nodes[0].op_pos[4], (8, 0), (8, 8), (8, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_raise(self):
         code = ("#bla\n"
                 "raise E")
         nodes = get_nodes(code, ast.Raise)
         self.assertPosition(nodes[0], (2, 0), (2, 7), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_raise2(self):
@@ -186,6 +246,9 @@ class TestStmt(NodeTestCase):
                 "V")
         nodes = get_nodes(code, ast.Raise)
         self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3
     def test_raise3(self):
@@ -194,6 +257,8 @@ class TestStmt(NodeTestCase):
                 "V)")
         nodes = get_nodes(code, ast.Raise)
         self.assertPosition(nodes[0], (2, 0), (3, 2), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_raise4(self):
@@ -202,6 +267,8 @@ class TestStmt(NodeTestCase):
                 "V, T)")
         nodes = get_nodes(code, ast.Raise)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_raise5(self):
@@ -210,6 +277,10 @@ class TestStmt(NodeTestCase):
                 "V, T")
         nodes = get_nodes(code, ast.Raise)
         self.assertPosition(nodes[0], (2, 0), (3, 4), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+        self.assertPosition(nodes[0].op_pos[2], (3, 1), (3, 2), (3, 2))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3
     def test_raise6(self):
@@ -217,6 +288,18 @@ class TestStmt(NodeTestCase):
                 "raise E(V).with_traceback(T)")
         nodes = get_nodes(code, ast.Raise)
         self.assertPosition(nodes[0], (2, 0), (2, 28), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python3
+    def test_raise7(self):
+        code = ("#bla\n"
+                "raise E from T")
+        nodes = get_nodes(code, ast.Raise)
+        self.assertPosition(nodes[0], (2, 0), (2, 14), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 8), (2, 12), (2, 12))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_with(self):
         code = ("#bla\n"
@@ -224,6 +307,11 @@ class TestStmt(NodeTestCase):
                 "    a")
         nodes = get_nodes(code, ast.With)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+        if sys.version_info < (3, 0):
+            self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 9), (2, 9))
+        self.assertPosition(nodes[0].op_pos[-1], (2, 11), (2, 12), (2, 12))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_with2(self):
         code = ("#bla\n"
@@ -231,6 +319,18 @@ class TestStmt(NodeTestCase):
                 "    a")
         nodes = get_nodes(code, ast.With)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 4))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        if sys.version_info < (3, 0):
+            self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+            self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 9), (2, 9))
+            self.assertPosition(nodes[1].op_pos[0], (2, 11), (2, 12), (2, 12))
+            self.assertPosition(nodes[1].op_pos[1], (2, 15), (2, 17), (2, 17))
+            self.assertPosition(nodes[1].op_pos[2], (2, 20), (2, 21), (2, 21))
+            self.assertNoBeforeInnerAfter(nodes[1])
+        else:
+            self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4))
+            self.assertPosition(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12))
+            self.assertPosition(nodes[0].op_pos[2], (2, 20), (2, 21), (2, 21))
 
     @only_python35
     def test_async_with(self):
@@ -238,7 +338,10 @@ class TestStmt(NodeTestCase):
                 "    async with x as f:\n"
                 "        a")
         nodes = get_nodes(code, ast.AsyncWith)
-        self.assertPosition(nodes[0], (2, 4), (3, 9), (2, 9))
+        self.assertPosition(nodes[0], (2, 4), (3, 9), (2, 14))
+        self.assertPosition(nodes[0].op_pos[0], (2, 4), (2, 14), (2, 14))
+        self.assertPosition(nodes[0].op_pos[1], (2, 21), (2, 22), (2, 22))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_if(self):
         code = ("#bla\n"
@@ -246,6 +349,9 @@ class TestStmt(NodeTestCase):
                 "    a")
         nodes = get_nodes(code, ast.If)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[1], (2, 4), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_if2(self):
         code = ("#bla\n"
@@ -255,7 +361,13 @@ class TestStmt(NodeTestCase):
                 "    b")
         nodes = get_nodes(code, ast.If)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[1], (2, 4), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
         self.assertPosition(nodes[1], (4, 0), (5, 5), (4, 4))
+        self.assertPosition(nodes[1].op_pos[0], (4, 0), (4, 4), (4, 4))
+        self.assertPosition(nodes[1].op_pos[1], (4, 6), (4, 7), (4, 7))
+        self.assertNoBeforeInnerAfter(nodes[1])
 
     def test_if3(self):
         code = ("#bla\n"
@@ -267,8 +379,17 @@ class TestStmt(NodeTestCase):
                 "    c")
         nodes = get_nodes(code, ast.If)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[1], (2, 4), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
         self.assertPosition(nodes[1], (4, 0), (5, 5), (4, 4))
+        self.assertPosition(nodes[1].op_pos[0], (4, 0), (4, 4), (4, 4))
+        self.assertPosition(nodes[1].op_pos[1], (4, 6), (4, 7), (4, 7))
+        self.assertNoBeforeInnerAfter(nodes[1])
         self.assertPosition(nodes[2], (6, 0), (7, 5), (6, 2))
+        self.assertPosition(nodes[2].op_pos[0], (6, 0), (6, 2), (6, 2))
+        self.assertPosition(nodes[2].op_pos[1], (6, 4), (6, 5), (6, 5))
+        self.assertNoBeforeInnerAfter(nodes[2])
 
     def test_if4(self):
         code = ("#bla\n"
@@ -280,7 +401,14 @@ class TestStmt(NodeTestCase):
                 "    c")
         nodes = get_nodes(code, ast.If)
         self.assertPosition(nodes[0], (2, 0), (7, 5), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[1], (2, 4), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
         self.assertPosition(nodes[1], (4, 0), (7, 5), (4, 4))
+        self.assertPosition(nodes[1].op_pos[0], (4, 0), (4, 4), (4, 4))
+        self.assertPosition(nodes[1].op_pos[1], (4, 6), (4, 7), (4, 7))
+        self.assertPosition(nodes[1].op_pos[2], (6, 0), (6, 5), (6, 5))
+        self.assertNoBeforeInnerAfter(nodes[1])
 
     def test_while(self):
         code = ("#bla\n"
@@ -288,6 +416,9 @@ class TestStmt(NodeTestCase):
                 "    a")
         nodes = get_nodes(code, ast.While)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_while2(self):
         code = ("#bla\n"
@@ -297,6 +428,10 @@ class TestStmt(NodeTestCase):
                 "    b")
         nodes = get_nodes(code, ast.While)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+        self.assertPosition(nodes[0].op_pos[2], (4, 0), (4, 5), (4, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_for(self):
         code = ("#bla\n"
@@ -304,6 +439,10 @@ class TestStmt(NodeTestCase):
                 "    a")
         nodes = get_nodes(code, ast.For)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3))
+        self.assertPosition(nodes[0].op_pos[1], (2, 6), (2, 8), (2, 8))
+        self.assertPosition(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_for2(self):
         code = ("#bla\n"
@@ -313,6 +452,11 @@ class TestStmt(NodeTestCase):
                 "    b")
         nodes = get_nodes(code, ast.For)
         self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3))
+        self.assertPosition(nodes[0].op_pos[1], (2, 6), (2, 8), (2, 8))
+        self.assertPosition(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11))
+        self.assertPosition(nodes[0].op_pos[3], (4, 0), (4, 5), (4, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python35
     def test_async_for(self):
@@ -320,7 +464,11 @@ class TestStmt(NodeTestCase):
                 "    async for x in l:\n"
                 "        a")
         nodes = get_nodes(code, ast.AsyncFor)
-        self.assertPosition(nodes[0], (2, 4), (3, 9), (2, 9))
+        self.assertPosition(nodes[0], (2, 4), (3, 9), (2, 13))
+        self.assertPosition(nodes[0].op_pos[0], (2, 4), (2, 13), (2, 13))
+        self.assertPosition(nodes[0].op_pos[1], (2, 16), (2, 18), (2, 18))
+        self.assertPosition(nodes[0].op_pos[2], (2, 20), (2, 21), (2, 21))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_print(self):
@@ -328,6 +476,8 @@ class TestStmt(NodeTestCase):
                 "print")
         nodes = get_nodes(code, ast.Print)
         self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_print2(self):
@@ -335,6 +485,8 @@ class TestStmt(NodeTestCase):
                 "print a")
         nodes = get_nodes(code, ast.Print)
         self.assertPosition(nodes[0], (2, 0), (2, 7), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_print3(self):
@@ -342,6 +494,10 @@ class TestStmt(NodeTestCase):
                 "print >>log, a")
         nodes = get_nodes(code, ast.Print)
         self.assertPosition(nodes[0], (2, 0), (2, 14), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 6), (2, 8), (2, 8))
+        self.assertPosition(nodes[0].op_pos[2], (2, 11), (2, 12), (2, 12))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python2
     def test_print4(self):
@@ -349,6 +505,9 @@ class TestStmt(NodeTestCase):
                 "print >>log")
         nodes = get_nodes(code, ast.Print)
         self.assertPosition(nodes[0], (2, 0), (2, 11), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 6), (2, 8), (2, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_aug_assign(self):
         code = ("#bla\n"
@@ -356,6 +515,7 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.AugAssign)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 4))
         self.assertPosition(nodes[0].op_pos, (2, 2), (2, 4), (2, 4))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python36
     def test_ann_assign(self):
@@ -365,6 +525,7 @@ class TestStmt(NodeTestCase):
         self.assertPosition(nodes[0], (2, 0), (2, 10), (2, 2))
         self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2))
         self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python36
     def test_ann_assign2(self):
@@ -373,6 +534,7 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.AnnAssign)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 2))
         self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python36
     def test_ann_assign3(self):
@@ -381,6 +543,7 @@ class TestStmt(NodeTestCase):
         nodes = get_nodes(code, ast.AnnAssign)
         self.assertPosition(nodes[0], (2, 0), (2, 8), (2, 4))
         self.assertPosition(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_assign(self):
         code = ("#bla\n"
@@ -391,12 +554,16 @@ class TestStmt(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[0], (2, 2), (2, 3), (2, 3))
         self.assertPosition(nodes[0].op_pos[1], (2, 6), (2, 7), (2, 7))
         self.assertPosition(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_delete(self):
         code = ("#bla\n"
                 "del a, b")
         nodes = get_nodes(code, ast.Delete)
         self.assertPosition(nodes[0], (2, 0), (2, 8), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3))
+        self.assertPosition(nodes[0].op_pos[1], (2, 5), (2, 6), (2, 6))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_delete2(self):
         code = ("#bla\n"
@@ -404,18 +571,24 @@ class TestStmt(NodeTestCase):
                 "b)")
         nodes = get_nodes(code, ast.Delete)
         self.assertPosition(nodes[0], (2, 0), (3, 2), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_return(self):
         code = ("#bla\n"
                 "return")
         nodes = get_nodes(code, ast.Return)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_return2(self):
         code = ("#bla\n"
                 "return a")
         nodes = get_nodes(code, ast.Return)
         self.assertPosition(nodes[0], (2, 0), (2, 8), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 6), (2, 6))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_class(self):
         code = ("#bla\n"
@@ -423,6 +596,9 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.ClassDef)
         self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
+        self.assertPosition(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_class2(self):
         code = ("#bla\n"
@@ -431,6 +607,9 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.ClassDef)
         self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 5))
+        self.assertPosition(nodes[0].op_pos[0], (3, 0), (3, 5), (3, 5))
+        self.assertPosition(nodes[0].op_pos[1], (3, 15), (3, 16), (3, 16))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_function_def(self):
         code = ("#bla\n"
@@ -438,6 +617,9 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.FunctionDef)
         self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3))
+        self.assertPosition(nodes[0].op_pos[1], (2, 22), (2, 23), (2, 23))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_function_def2(self):
         code = ("#bla\n"
@@ -446,6 +628,9 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.FunctionDef)
         self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 3))
+        self.assertPosition(nodes[0].op_pos[0], (3, 0), (3, 3), (3, 3))
+        self.assertPosition(nodes[0].op_pos[1], (3, 22), (3, 23), (3, 23))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3
     def test_function_def3(self):
@@ -455,6 +640,9 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.FunctionDef)
         self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 3))
+        self.assertPosition(nodes[0].op_pos[0], (3, 0), (3, 3), (3, 3))
+        self.assertPosition(nodes[0].op_pos[1], (3, 33), (3, 34), (3, 34))
+        self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_function_def4(self):
         code = ("#bla\n"
@@ -465,7 +653,13 @@ class TestStmt(NodeTestCase):
                 "    pass")
         nodes = get_nodes(code, ast.FunctionDef)
         self.assertPosition(nodes[0], (2, 0), (3, 12), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3))
+        self.assertPosition(nodes[0].op_pos[1], (2, 8), (2, 9), (2, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
         self.assertPosition(nodes[1], (4, 0), (6, 8), (5, 3))
+        self.assertPosition(nodes[1].op_pos[0], (5, 0), (5, 3), (5, 3))
+        self.assertPosition(nodes[1].op_pos[1], (5, 7), (5, 8), (5, 8))
+        self.assertNoBeforeInnerAfter(nodes[1])
 
     @only_python35
     def test_async_function_def(self):
@@ -473,4 +667,7 @@ class TestStmt(NodeTestCase):
                 "async def f(x, y=2, *z, **w):\n"
                 "    pass")
         nodes = get_nodes(code, ast.AsyncFunctionDef)
-        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 5))
+        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 9))
+        self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 9), (2, 9))
+        self.assertPosition(nodes[0].op_pos[1], (2, 28), (2, 29), (2, 29))
+        self.assertNoBeforeInnerAfter(nodes[0])

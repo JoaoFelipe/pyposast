@@ -11,6 +11,7 @@ from .utils import only_python2, only_python3, only_python35
 
 
 class TestMisc(NodeTestCase):
+    # pylint: disable=missing-docstring, too-many-public-methods
 
     def test_index(self):
         code = ("#bla\n"
@@ -255,49 +256,49 @@ class TestMisc(NodeTestCase):
         code = ("#bla\n"
                 "~a")
         nodes = get_nodes(code, ast.UnaryOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 0), (2, 1), (2, 1))
 
     def test_not(self):
         code = ("#bla\n"
                 "not a")
         nodes = get_nodes(code, ast.UnaryOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 0), (2, 3), (2, 3))
 
     def test_usub(self):
         code = ("#bla\n"
                 "-a")
         nodes = get_nodes(code, ast.UnaryOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 0), (2, 1), (2, 1))
 
     def test_uadd(self):
         code = ("#bla\n"
                 "+a")
         nodes = get_nodes(code, ast.UnaryOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 0), (2, 1), (2, 1))
 
     def test_add(self):
         code = ("#bla\n"
                 "a + a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_sub(self):
         code = ("#bla\n"
                 "a - a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_mult(self):
         code = ("#bla\n"
                 "a * a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     @only_python35
@@ -305,63 +306,63 @@ class TestMisc(NodeTestCase):
         code = ("#bla\n"
                 "a @ a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_div(self):
         code = ("#bla\n"
                 "a / a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_mod(self):
         code = ("#bla\n"
                 "a % a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_pow(self):
         code = ("#bla\n"
                 "a ** a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 4), (2, 4))
 
     def test_lshift(self):
         code = ("#bla\n"
                 "a << a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 4), (2, 4))
 
     def test_rshift(self):
         code = ("#bla\n"
                 "a >> a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 4), (2, 4))
 
     def test_bitor(self):
         code = ("#bla\n"
                 "a | a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_bitand(self):
         code = ("#bla\n"
                 "a & a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
 
     def test_floordiv(self):
         code = ("#bla\n"
                 "a // a")
         nodes = get_nodes(code, ast.BinOp)
-        op = nodes[0].op_pos
+        op = nodes[0].op_pos[0]
         self.assertPosition(op, (2, 2), (2, 4), (2, 4))
 
     def test_and(self):
