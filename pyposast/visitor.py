@@ -261,7 +261,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         last, _ = self.names[node.attr].find_next(position)
         node.last_line, node.last_col = last
         node.uid, first_dot = self.operators['.'].find_next(position)
-        node.op_pos = NodeWithPosition(node.uid, first_dot)
+        node.op_pos = [NodeWithPosition(node.uid, first_dot)]
 
     @visit_all
     def visit_Index(self, node):
@@ -1079,8 +1079,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         set_max_position(node)
         min_first_max_last(node, node.target)
         min_first_max_last(node, node.value)
-        node.op_pos = self.calculate_infixop(node.op, node.target, node.value)
-        node.uid = node.op_pos.uid
+        node.op_pos = [self.calculate_infixop(node.op, node.target, node.value)]
+        node.uid = node.op_pos[0].uid
 
     @visit_stmt
     def visit_AnnAssign(self, node):
@@ -1139,9 +1139,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     def adjust_decorator(self, node, dec):
         position = dec.first_line, dec.first_col
+        last, first = self.operators['@'].find_previous(position)
         if (node.first_line, node.first_col) == position:
-            _, first = self.operators['@'].find_previous(position)
             node.first_line, node.first_col = first
+        node.op_pos.insert(-2, NodeWithPosition(last, first))
 
     @visit_stmt
     def visit_ClassDef(self, node):
@@ -1152,6 +1153,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             self.adjust_decorator(node, dec)
 
         min_first_max_last(node, node.body[-1])
+
+        position = (node.first_line, node.first_col)
+        last, first = self.names[node.name].find_next(position)
+        node.name_node = NodeWithPosition(last, first)
+
 
     @visit_all
     def visit_keyword(self, node):
@@ -1186,6 +1192,17 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
         min_first_max_last(node, node.body[-1])
         node.lineno = lineno
+
+        last, first = self.names[node.name].find_next(first)
+        node.name_node = NodeWithPosition(last, first)
+
+        first, last = self.parenthesis.find_next(first)
+        node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first))
+        node.op_pos.insert(-1, NodeWithPosition(last, dec_tuple(last)))
+
+        if hasattr(node, 'returns') and node.returns:  # Python 3
+            last, first = self.operators['->'].find_next(last)
+            node.op_pos.insert(-1, NodeWithPosition(last, first))
 
     @visit_stmt
     def visit_AsyncFunctionDef(self, node):

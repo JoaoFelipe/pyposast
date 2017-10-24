@@ -139,7 +139,7 @@ class TestExpr(NodeTestCase):
                 "a.b")
         nodes = get_nodes(code, ast.Attribute)
         self.assertPosition(nodes[0], (2, 0), (2, 3), (2, 2))
-        self.assertPosition(nodes[0].op_pos, (2, 1), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2))
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_attribute2(self):
@@ -148,7 +148,7 @@ class TestExpr(NodeTestCase):
                 "b")
         nodes = get_nodes(code, ast.Attribute)
         self.assertPosition(nodes[0], (2, 0), (3, 1), (2, 2))
-        self.assertPosition(nodes[0].op_pos, (2, 1), (2, 2), (2, 2))
+        self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2))
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_attribute3(self):
@@ -156,9 +156,9 @@ class TestExpr(NodeTestCase):
                 "a.b.c")
         nodes = get_nodes(code, ast.Attribute)
         self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 4))
-        self.assertPosition(nodes[0].op_pos, (2, 3), (2, 4), (2, 4))
+        self.assertPosition(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4))
         self.assertPosition(nodes[1], (2, 0), (2, 3), (2, 2))
-        self.assertPosition(nodes[1].op_pos, (2, 1), (2, 2), (2, 2))
+        self.assertPosition(nodes[1].op_pos[0], (2, 1), (2, 2), (2, 2))
         self.assertNoBeforeInnerAfter(nodes[0])
         self.assertNoBeforeInnerAfter(nodes[1])
 
@@ -169,11 +169,11 @@ class TestExpr(NodeTestCase):
                 ".d")
         nodes = get_nodes(code, ast.Attribute)
         self.assertPosition(nodes[0], (2, 0), (4, 2), (4, 1))
-        self.assertPosition(nodes[0].op_pos, (4, 0), (4, 1), (4, 1))
+        self.assertPosition(nodes[0].op_pos[0], (4, 0), (4, 1), (4, 1))
         self.assertPosition(nodes[1], (2, 0), (3, 3), (3, 2))
-        self.assertPosition(nodes[1].op_pos, (3, 1), (3, 2), (3, 2))
+        self.assertPosition(nodes[1].op_pos[0], (3, 1), (3, 2), (3, 2))
         self.assertPosition(nodes[2], (2, 0), (3, 1), (2, 2))
-        self.assertPosition(nodes[2].op_pos, (2, 1), (2, 2), (2, 2))
+        self.assertPosition(nodes[2].op_pos[0], (2, 1), (2, 2), (2, 2))
         self.assertNoBeforeInnerAfter(nodes[0])
         self.assertNoBeforeInnerAfter(nodes[1])
         self.assertNoBeforeInnerAfter(nodes[2])
@@ -184,7 +184,7 @@ class TestExpr(NodeTestCase):
                 "   b)")
         nodes = get_nodes(code, ast.Attribute)
         self.assertPosition(nodes[0], (2, 0), (3, 5), (2, 3))
-        self.assertPosition(nodes[0].op_pos, (2, 2), (2, 3), (2, 3))
+        self.assertPosition(nodes[0].op_pos[0], (2, 2), (2, 3), (2, 3))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (3, 4))
 
     def test_ellipsis(self):
