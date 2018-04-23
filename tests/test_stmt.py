@@ -608,6 +608,10 @@ class TestStmt(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[2], (3, 15), (3, 16), (3, 16))
         self.assertNoBeforeInnerAfter(nodes[0])
 
+        nodes = get_nodes(code, ast.Name)
+        self.assertPosition(nodes[0], (3, 8), (3, 14), (3, 14))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     def test_function_def(self):
         code = ("#bla\n"
                 "def f(x, y=2, *z, **w):\n"

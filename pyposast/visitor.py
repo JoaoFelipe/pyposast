@@ -236,11 +236,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @only_python36
     def visit_FormattedValue(self, node):
         set_pos(node, *node.bracket)
-        self.dline += node.first_line - 1
-        self.dcol += node.first_col
         self.visit(node.value)
-        self.dline -= node.first_line - 1
-        self.dcol -= node.first_col
         if node.format_spec:
             self.visit(node.format_spec)
         update_expr_parenthesis(self.lcode, self.parenthesis, node)
@@ -1158,6 +1154,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         last, first = self.names[node.name].find_next(position)
         node.name_node = NodeWithPosition(last, first)
 
+        len_keywords = len(getattr(node, "keywords", []))
+        if len(node.bases) == 1 and len_keywords == 0:
+            increment_node_position(self.lcode, node.bases[0])
 
     @visit_all
     def visit_keyword(self, node):
