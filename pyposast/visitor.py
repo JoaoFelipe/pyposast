@@ -165,13 +165,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
         )
 
-    def uid_something_colon(self, node):
+    def uid_something_colon(self, node, inclusive=False):
         """ Creates op_pos for node from uid to colon """
         node.op_pos = [
             NodeWithPosition(node.uid, (node.first_line, node.first_col))
         ]
         position = (node.body[0].first_line, node.body[0].first_col)
-        last, first = self.operators[':'].find_previous(position)
+        last, first = self.operators[':'].find_previous(position, inclusive=inclusive)
         node.op_pos.append(NodeWithPosition(last, first))
         return last
 
@@ -293,8 +293,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.op_pos = []
         for sub_node in node.children:
             min_first_max_last(node, sub_node)
-
-
 
     def process_slice(self, the_slice, previous):
         if isinstance(the_slice, ast.Ellipsis):
@@ -477,18 +475,15 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     def visit_comprehension(self, node):
         set_max_position(node)
         if hasattr(node, 'is_async') and node.is_async:  # async in python 3.6
-            r_set_previous_element(node, node.target, self.operators['async'])
-            first = node.first_line, node.first_col
-            r_set_previous_element(node, node.target, self.operators['for'])
-            node.first_line, node.first_col = first
+            r_set_previous_element(node, node.target, self.operators['async for'], inclusive=True)
         else:
-            r_set_previous_element(node, node.target, self.operators['for'])
+            r_set_previous_element(node, node.target, self.operators['for'], inclusive=True)
         node.op_pos = [
             NodeWithPosition(node.uid, (node.first_line, node.first_col))
         ]
         min_first_max_last(node, node.iter)
         position = (node.iter.first_line, node.iter.first_col)
-        last, first = self.operators['in'].find_previous(position)
+        last, first = self.operators['in'].find_previous(position, inclusive=True)
         node.op_pos.append(NodeWithPosition(last, first))
         for eif in node.ifs:
             min_first_max_last(node, eif)
@@ -543,8 +538,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         min_first_max_last(node, node.body)
         min_first_max_last(node, node.orelse)
         position = (node.test.first_line, node.test.first_col + 1)
-        node.uid = self.operators['if'].find_previous(position)[0]
-        else_pos = self.operators['else'].find_previous(position)[0]
+        node.uid = self.operators['if'].find_previous(position, inclusive=True)[0]
+        else_pos = self.operators['else'].find_next(position, inclusive=True)[0]
         node.op_pos = [
             NodeWithPosition(node.uid, (node.uid[0], node.uid[1] - 2)),
             NodeWithPosition(else_pos, (else_pos[0], else_pos[1] - 4))
@@ -667,7 +662,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 self.find_next_comma(node, last_node)
 
         node.uid = (node.last_line, node.last_col)
-
 
 
     @visit_expr
@@ -970,9 +964,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_stmt
     def visit_With(self, node, keyword='with'):
         start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
-        first = node.first_line, node.first_col
-        start_by_keyword(node, self.operators['with'], self.bytes_pos_to_utf8)
-        node.first_line, node.first_col = first
         min_first_max_last(node, node.body[-1])
         node.op_pos = [
             NodeWithPosition(node.uid, (node.first_line, node.first_col))
@@ -1000,10 +991,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             last, first = self.operators[':'].find_previous(position)
             node.op_pos.append(NodeWithPosition(last, first))
 
-    @visit_stmt
     def visit_AsyncWith(self, node):
         """ Python 3.5 """
-        self.visit_With(node, keyword='async')
+        self.visit_With(node, keyword='async with')
 
     @visit_all
     def visit_withitem(self, node):
@@ -1016,35 +1006,33 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             last, first = self.operators['as'].find_previous(position)
             node.op_pos.append(NodeWithPosition(last, first))
 
-
     @visit_stmt
     def visit_If(self, node):
-        start_by_keyword(node, self.operators['if'], self.bytes_pos_to_utf8)
+        start_by_keyword(node, self.operators['if'], self.bytes_pos_to_utf8, inclusive=True)
         min_first_max_last(node, node.body[-1])
         last = self.uid_something_colon(node)
         self.optional_else(node, last)
 
     @visit_stmt
     def visit_While(self, node):
-        start_by_keyword(node, self.operators['while'], self.bytes_pos_to_utf8)
+        start_by_keyword(node, self.operators['while'], self.bytes_pos_to_utf8, inclusive=True)
         min_first_max_last(node, node.body[-1])
         last = self.uid_something_colon(node)
         self.optional_else(node, last)
 
     @visit_stmt
     def visit_For(self, node, keyword='for'):
-        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
+        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8, inclusive=True)
         first = node.first_line, node.first_col
-        start_by_keyword(node, self.operators['for'], self.bytes_pos_to_utf8)
+        start_by_keyword(node, self.operators['for'], self.bytes_pos_to_utf8,  inclusive=True)
         node.first_line, node.first_col = first
         min_first_max_last(node, node.body[-1])
         last = self.uid_something_colon(node)
         position = (node.iter.first_line, node.iter.first_col)
-        last, first = self.operators['in'].find_previous(position)
+        last, first = self.operators['in'].find_previous(position, inclusive=True)
         node.op_pos.insert(1, NodeWithPosition(last, first))
         self.optional_else(node, last)
 
-    @visit_stmt
     def visit_AsyncFor(self, node):
         """ Python 3.5 """
         self.visit_For(node, keyword='async')
@@ -1179,8 +1167,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             node.lineno = max(node.lineno, dec.last_line + 1)
         start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         first = node.first_line, node.first_col
-        start_by_keyword(node, self.operators['def'], self.bytes_pos_to_utf8)
-        node.first_line, node.first_col = first
         self.uid_something_colon(node)
         previous, last = self.parenthesis.find_next(node.uid)
         self.update_arguments(node.args, inc_tuple(previous), dec_tuple(last))
@@ -1203,10 +1189,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             last, first = self.operators['->'].find_next(last)
             node.op_pos.insert(-1, NodeWithPosition(last, first))
 
-    @visit_stmt
     def visit_AsyncFunctionDef(self, node):
         """ Python 3.5 """
-        self.visit_FunctionDef(node, keyword='async')
+        self.visit_FunctionDef(node, keyword='async def')
 
     @visit_mod
     def visit_Module(self, node):

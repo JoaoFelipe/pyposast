@@ -529,6 +529,20 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5))
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    def test_yield4(self):
+        code = ("#bla\n"
+                "(yield \n"
+                "2)\n"
+                "(yield \n"
+                "2)")
+        nodes = get_nodes(code, ast.Yield)
+        self.assertPosition(nodes[0], (2, 0), (3, 2), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 6), (2, 6))
+        self.assertSimpleInnerPosition(nodes[0], (2, 1), (3, 1))
+        self.assertPosition(nodes[1], (4, 0), (5, 2), (4, 6))
+        self.assertPosition(nodes[1].op_pos[0], (4, 1), (4, 6), (4, 6))
+        self.assertSimpleInnerPosition(nodes[1], (4, 1), (5, 1))
+
     def test_generator_exp(self):
         code = ("#bla\n"
                 "f(x\n"
@@ -537,6 +551,20 @@ class TestExpr(NodeTestCase):
         nodes = get_nodes(code, ast.GeneratorExp)
         self.assertPosition(nodes[0], (2, 2), (4, 5), (2, 3))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    def test_generator_exp2(self):
+        code = ("#bla\n"
+                "f(x\n"
+                " for x in l\n"
+                " if x)\n"
+                "g(y\n"
+                " for y in m\n"
+                " if y)")
+        nodes = get_nodes(code, ast.GeneratorExp)
+        self.assertPosition(nodes[0], (2, 2), (4, 5), (2, 3))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        self.assertPosition(nodes[1], (5, 2), (7, 5), (5, 3))
+        self.assertNoBeforeInnerAfter(nodes[1])
 
     def test_dict_comp(self):
         code = ("#bla\n"
@@ -685,6 +713,16 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[1], (3, 2), (3, 6), (3, 6))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (3, 8))
 
+    def test_if_exp3(self):
+        code = ("#bla\n"
+                "((1)if(2)else(3))\n"
+                "((4)if(5)else(6))")
+        nodes = get_nodes(code, ast.IfExp)
+        self.assertPosition(nodes[0], (2, 0), (2, 17), (2, 6))
+        self.assertPosition(nodes[0].op_pos[0], (2, 4), (2, 6), (2, 6))
+        self.assertPosition(nodes[0].op_pos[1], (2, 9), (2, 13), (2, 13))
+        self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 16))
+
     def test_lambda(self):
         code = ("#bla\n"
                 "lambda x, y:\\\n"
@@ -777,6 +815,20 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[0], (2, 3), (2, 6), (2, 6))
         self.assertPosition(nodes[0].op_pos[1], (2, 9), (2, 12), (2, 12))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 14))
+
+    def test_bool_op4(self):
+        code = ("#bla\n"
+                "((a)and(b)and(c))\n"
+                "((d)and(e)and(f))")
+        nodes = get_nodes(code, ast.BoolOp)
+        self.assertPosition(nodes[0], (2, 0), (2, 17), (2, 17))
+        self.assertPosition(nodes[0].op_pos[0], (2, 4), (2, 7), (2, 7))
+        self.assertPosition(nodes[0].op_pos[1], (2, 10), (2, 13), (2, 13))
+        self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 16))
+        self.assertPosition(nodes[1], (3, 0), (3, 17), (3, 17))
+        self.assertPosition(nodes[1].op_pos[0], (3, 4), (3, 7), (3, 7))
+        self.assertPosition(nodes[1].op_pos[1], (3, 10), (3, 13), (3, 13))
+        self.assertSimpleInnerPosition(nodes[1], (3, 1), (3, 16))
 
     @only_python3
     def test_starred(self):
@@ -925,6 +977,19 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0], (2, 0), (3, 8), (3, 4))
         self.assertPosition(nodes[0].op_pos[0], (2, 1), (3, 4), (3, 4))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (3, 7))
+
+    @only_python3
+    def test_yield_from4(self):
+        code = ("#bla\n"
+                "(yield from(a))\n"
+                "(yield from(b))")
+        nodes = get_nodes(code, ast.YieldFrom)
+        self.assertPosition(nodes[0], (2, 0), (2, 15), (2, 11))
+        self.assertPosition(nodes[0].op_pos[0], (2, 1), (2, 11), (2, 11))
+        self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 14))
+        self.assertPosition(nodes[1], (3, 0), (3, 15), (3, 11))
+        self.assertPosition(nodes[1].op_pos[0], (3, 1), (3, 11), (3, 11))
+        self.assertSimpleInnerPosition(nodes[1], (3, 1), (3, 14))
 
     @only_python36
     def test_joined_str(self):

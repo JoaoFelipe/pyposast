@@ -24,15 +24,19 @@ class ElementDict(OrderedDict):
         if not self._bkeys:
             self._bkeys = list(self.keys())
 
-    def find_next(self, position):
+    def find_next(self, position, inclusive=False):
         self.set_keys()
+        if inclusive:
+            position = (position[0], position[1] + 1)
         index = bisect.bisect_left(self._bkeys, position)
         key = self._bkeys[index]
         value = self[key]
         return key, value
 
-    def find_previous(self, position):
+    def find_previous(self, position, inclusive=False):
         self.set_keys()
+        if inclusive:
+            position = (position[0], position[1] + 1)
         index = bisect.bisect_left(self._bkeys, position)
         key = self._bkeys[index - 1]
         value = self[key]
@@ -133,17 +137,13 @@ class TokenCollector(object):
                 self.strings[t_erow_ecol] = start
             elif t_type == tokenize.NUMBER:
                 self.numbers[t_erow_ecol] = t_srow_scol
-            elif t_type == tokenize.NAME and t_string in KEYWORDS:
-                self.operators[t_string][t_erow_ecol] = t_srow_scol
-            elif t_type == tokenize.NAME and dots == 1:
-                self.attributes[t_erow_ecol] = first_dot[2]
-                dots = 0
-                first_dot = None
             elif t_type == tokenize.NAME and t_string == 'elif':
                 self.operators['if'][t_erow_ecol] = t_srow_scol
             elif t_type == tokenize.NAME and t_string in PAST_KEYWORKDS.keys():
+                if t_type == tokenize.NAME and t_string in KEYWORDS:
+                    self.operators[t_string][t_erow_ecol] = t_srow_scol
                 if last and last[1] == PAST_KEYWORKDS[t_string]:
-                    combined = "{} {}".format(PAST_KEYWORKDS[t_string], t_string)
+                    combined = "{} {}".format(last[1], t_string)
                     self.operators[combined][t_erow_ecol] = last[2]
                 elif t_string in FUTURE_KEYWORDS:
                     tok[5] = True
@@ -153,17 +153,20 @@ class TokenCollector(object):
                 tok[5] = True
             elif t_string in SEMI_KEYWORDS:
                 self.operators[t_string][t_erow_ecol] = t_srow_scol
-
+            elif t_type == tokenize.NAME and t_string in KEYWORDS:
+                self.operators[t_string][t_erow_ecol] = t_srow_scol
+            elif t_type == tokenize.NAME and dots == 1:
+                self.attributes[t_erow_ecol] = first_dot[2]
+                dots = 0
+                first_dot = None
             if t_string != '.':
                 dots = 0
             if last and last[1] in FUTURE_KEYWORDS and last[5]:
                 self.operators[last[1]][last[3]] = last[2]
-
             if t_type == tokenize.NAME or t_string == 'None':
                 self.names[t_string][t_erow_ecol] = t_srow_scol
             if t_type != tokenize.NL:
                 last = tok
-    
 
 def extract_tokens(code, return_tokens=False):
     # Should I implement a LL 1 parser?

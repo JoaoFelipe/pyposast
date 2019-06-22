@@ -12,11 +12,14 @@ KEYWORDS = ['and', 'or', 'for', 'if', 'lambda', 'None', 'global', 'import',
             'assert', 'try', 'except', 'raise', 'with', 'while', 'del',
             'return', 'class', 'def', 'else', 'finally', 'as',]
 SEMI_KEYWORDS = []
-COMBINED_KEYWORDS = ['is not',  'not in']
-FUTURE_KEYWORDS = ['is', 'not']
+COMBINED_KEYWORDS = ['is not',  'not in', 'async for', 'async with', 'async def']
+FUTURE_KEYWORDS = ['is', 'not', 'for', 'with', 'def']
 PAST_KEYWORKDS = {
     'in': 'not',
-    'not': 'is'
+    'not': 'is',
+    'for': 'async',
+    'with': 'async',
+    'def': 'async',
 }
 
 OPERATORS = {

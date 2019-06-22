@@ -93,9 +93,9 @@ def set_previous_element(node, previous, element_dict):
     set_pos(node, *element_dict.find_previous(position))
 
 
-def r_set_previous_element(node, previous, element_dict):
+def r_set_previous_element(node, previous, element_dict, inclusive=False):
     position = (previous.first_line, previous.first_col)
-    r_set_pos(node, *element_dict.find_previous(position))
+    r_set_pos(node, *element_dict.find_previous(position, inclusive=inclusive))
 
 
 def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
@@ -110,14 +110,14 @@ def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
     node.last_line, node.last_col = last
 
 
-def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True):
+def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True, inclusive=False):
     position = ast_pos(node, bytes_pos_to_utf8)
     try:
-        node.uid, first = keyword.find_next(position)
+        node.uid, first = keyword.find_next(position, inclusive=inclusive)
         if first != position:
             raise IndexError
     except IndexError:
-        node.uid, first = keyword.find_previous(position)
+        node.uid, first = keyword.find_previous(position, inclusive=inclusive)
     node.first_line, node.first_col = first
     if set_last:
         node.last_line, node.last_col = node.uid

@@ -201,6 +201,18 @@ class TestMisc(NodeTestCase):
         self.assertPosition(comp, (2, 2), (2, 4), (2, 4))
         self.assertNoBeforeInnerAfter(comp)
 
+    def test_is2(self):
+        code = ("#bla\n"
+                "(2)is(4)\n"
+                "(3)is(5)")
+        nodes = get_nodes(code, ast.Compare)
+        comp = nodes[0].op_pos[0]
+        self.assertPosition(comp, (2, 3), (2, 5), (2, 5))
+        self.assertNoBeforeInnerAfter(comp)
+        comp2 = nodes[1].op_pos[0]
+        self.assertPosition(comp2, (3, 3), (3, 5), (3, 5))
+        self.assertNoBeforeInnerAfter(comp2)
+
     def test_is_not(self):
         code = ("#bla\n"
                 "2 is not 4")
@@ -263,6 +275,22 @@ class TestMisc(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[1], (3, 17), (3, 19), (3, 19))
         self.assertPosition(nodes[0].op_pos[2], (4, 5), (4, 7), (4, 7))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    def test_comprehension4(self):
+        code = ("#bla\n"
+                "[(x)for(x)in(l)if(x)]\n"
+                "[(y)for(y)in(m)if(y)]")
+        nodes = get_nodes(code, ast.comprehension)
+        self.assertPosition(nodes[0], (2, 4), (2, 20), (2, 7))
+        self.assertPosition(nodes[0].op_pos[0], (2, 4), (2, 7), (2, 7))
+        self.assertPosition(nodes[0].op_pos[1], (2, 10), (2, 12), (2, 12))
+        self.assertPosition(nodes[0].op_pos[2], (2, 15), (2, 17), (2, 17))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        self.assertPosition(nodes[1], (3, 4), (3, 20), (3, 7))
+        self.assertPosition(nodes[1].op_pos[0], (3, 4), (3, 7), (3, 7))
+        self.assertPosition(nodes[1].op_pos[1], (3, 10), (3, 12), (3, 12))
+        self.assertPosition(nodes[1].op_pos[2], (3, 15), (3, 17), (3, 17))
+        self.assertNoBeforeInnerAfter(nodes[1])
 
     @only_python3
     def test_arg(self):
@@ -569,7 +597,7 @@ class TestMisc(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[2], (4, 39), (4, 40), (4, 40))
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    def test_excepthandler3(self):
+    def test_excepthandler4(self):
         code = ("#bla\n"
                 "try:\n"
                 "    a\n"
@@ -582,7 +610,7 @@ class TestMisc(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[2], (4, 27), (4, 28), (4, 28))
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    def test_excepthandler4(self):
+    def test_excepthandler5(self):
         code = ("#bla\n"
                 "try:\n"
                 "    a\n"
@@ -594,6 +622,25 @@ class TestMisc(NodeTestCase):
         self.assertPosition(nodes[0].op_pos[1], (4, 32), (4, 34), (4, 34))
         self.assertPosition(nodes[0].op_pos[2], (4, 41), (4, 42), (4, 42))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    def test_excepthandler6(self):
+        code = ("#bla\n"
+                "try:\n"
+                "    a\n"
+                "except(Exception1):\n"
+                "    b\n"
+                "except(Exception2):\n"
+                "    c")
+        nodes = get_nodes(code, ast.excepthandler)
+        self.assertPosition(nodes[0], (4, 0), (5, 5), (4, 6))
+        self.assertPosition(nodes[0].op_pos[0], (4, 0), (4, 6), (4, 6))
+        self.assertPosition(nodes[0].op_pos[1], (4, 18), (4, 19), (4, 19))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        self.assertPosition(nodes[1], (6, 0), (7, 5), (6, 6))
+        self.assertPosition(nodes[1].op_pos[0], (6, 0), (6, 6), (6, 6))
+        self.assertPosition(nodes[1].op_pos[1], (6, 18), (6, 19), (6, 19))
+        self.assertNoBeforeInnerAfter(nodes[1])
+
 
     @only_python3
     def test_withitem(self):
