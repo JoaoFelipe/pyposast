@@ -8,7 +8,7 @@ from __future__ import (absolute_import, division)
 import ast
 
 from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35, only_python36
+from .utils import only_python2, only_python3, only_python35, only_python36, only_python38
 
 
 def nprint(nodes):
@@ -1056,3 +1056,12 @@ class TestExpr(NodeTestCase):
         nodes = get_nodes(code, ast.Constant, tree=tree)
         self.assertPosition(nodes[0], (2, 4), (2, 5), (2, 5))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_named_expr(self):
+        code = ("#bla\n"
+                "(a := 1)")
+        nodes = get_nodes(code, ast.NamedExpr)
+        self.assertPosition(nodes[0], (2, 0), (2, 8), (2, 5))
+        self.assertPosition(nodes[0].op_pos[0], (2, 3), (2, 5), (2, 5))
+        self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 7))

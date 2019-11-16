@@ -86,9 +86,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     # pylint: disable=too-many-instance-attributes, too-many-public-methods
     # pylint: disable=no-self-use
 
-    def __init__(self, code, path, mode='exec', tree=None):
+    def __init__(self, code, path, mode='exec', tree=None, **parse_args):
         code = native_decode_source(code)
-        self.tree = tree or ast.parse(code, path, mode=mode)
+        self.tree = tree or ast.parse(code, path, mode=mode, **parse_args)
         self.code = code
         self.lcode = code.split('\n')
         self.utf8_pos_to_bytes = []
@@ -1205,6 +1205,27 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     def visit_AsyncFunctionDef(self, node):
         """ Python 3.5 """
         self.visit_FunctionDef(node, keyword='async def')
+
+    @only_python38
+    def visit_TypeIgnore(self, node):
+        nnode = copy(node)
+        nnode.lineno += self.dline
+        node.first_line = node.last_line = nnode.lineno
+        node.last_col = len(self.lcode[node.first_line - 1])
+        node.first_col = node.last_col - 12 - len(node.tag)
+        node.uid = (node.last_line, node.last_col)
+
+    @only_python38
+    @visit_expr
+    def visit_NamedExpr(self, node):
+        set_max_position(node)
+        min_first_max_last(node, node.target)
+        min_first_max_last(node, node.value)
+        node.op_pos = []
+        node.op_pos.append(
+            self.calculate_infixop(node, node.target, node.value)
+        )
+        node.uid = node.op_pos[0].uid
 
     @visit_mod
     def visit_Module(self, node):

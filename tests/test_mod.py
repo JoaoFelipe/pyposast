@@ -6,7 +6,7 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase, only_python2, only_python3
+from .utils import get_nodes, NodeTestCase, only_python2, only_python3, only_python38
 
 
 class TestMod(NodeTestCase):
@@ -36,3 +36,13 @@ class TestMod(NodeTestCase):
         nodes = get_nodes(code, ast.Expression, mode='eval')
         self.assertPosition(nodes[0], (1, 0), (1, 1), (1, 1))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_type_ignore(self):
+        code = ("# type: ignore\n"
+                "def f():\n"
+                "    # type: ignore x\n"
+                "    pass")
+        nodes = get_nodes(code, ast.TypeIgnore, type_comments=True)
+        self.assertPosition(nodes[0], (1, 2), (1, 14), (1, 14))
+        self.assertPosition(nodes[1], (3, 6), (3, 20), (3, 20))

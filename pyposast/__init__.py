@@ -9,7 +9,7 @@ from .visitor import LineProvenanceVisitor as Visitor, extract_code
 from .cross_version import native_decode_source, decode_source_to_unicode
 
 
-def parse(code, filename='<unknown>', mode='exec', tree=None):
+def parse(code, filename='<unknown>', mode='exec', tree=None, **parse_args):
     """Parse the source into an AST node with PyPosAST.
     Enhance nodes with positions
 
@@ -23,7 +23,7 @@ def parse(code, filename='<unknown>', mode='exec', tree=None):
     mode -- execution mode (exec, eval, single)
     tree -- current tree, if it was optimized
     """
-    visitor = Visitor(code, filename, mode, tree=tree)
+    visitor = Visitor(code, filename, mode, tree=tree, **parse_args)
     return visitor.tree
 
 
@@ -41,7 +41,7 @@ class _GetVisitor(ast.NodeVisitor):
         return ast.NodeVisitor.generic_visit(self, node)
 
 
-def get_nodes(code, desired_type, path="__main__", mode="exec", tree=None):
+def get_nodes(code, desired_type, path="__main__", mode="exec", tree=None, **parse_args):
     """Find all nodes of a given type
 
 
@@ -55,5 +55,5 @@ def get_nodes(code, desired_type, path="__main__", mode="exec", tree=None):
     mode -- execution mode (exec, eval, single)
     tree -- current tree, if it was optimized
     """
-    return _GetVisitor(parse(code, path, mode, tree), desired_type).result
+    return _GetVisitor(parse(code, path, mode, tree, **parse_args), desired_type).result
 
