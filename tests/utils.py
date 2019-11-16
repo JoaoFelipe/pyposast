@@ -11,6 +11,7 @@ import unittest
 
 from pyposast.cross_version import only_python2, only_python3
 from pyposast.cross_version import only_python35, only_python36
+from pyposast.cross_version import only_python38
 from pyposast import get_nodes
 
 

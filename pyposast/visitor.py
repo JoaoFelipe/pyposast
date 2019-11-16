@@ -12,7 +12,7 @@ from operator import sub
 from functools import wraps
 
 from .cross_version import only_python2, only_python3, native_decode_source
-from .cross_version import only_python36
+from .cross_version import only_python36, only_python37, only_python38
 from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
@@ -1021,10 +1021,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         self.optional_else(node, last)
 
     @visit_stmt
-    def visit_For(self, node, keyword='for'):
-        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8, inclusive=True)
+    def visit_For(self, node, keyword='for', delta=(0, 0)):
+        start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8, inclusive=True, delta=delta)
         first = node.first_line, node.first_col
-        start_by_keyword(node, self.operators['for'], self.bytes_pos_to_utf8,  inclusive=True)
+        start_by_keyword(node, self.operators['for'], self.bytes_pos_to_utf8,  inclusive=True, delta=delta)
         node.first_line, node.first_col = first
         min_first_max_last(node, node.body[-1])
         last = self.uid_something_colon(node)
@@ -1035,7 +1035,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     def visit_AsyncFor(self, node):
         """ Python 3.5 """
-        self.visit_For(node, keyword='async')
+        self.visit_For(node, keyword='async', delta=(0, 6) if only_python37 else (0, 0))
 
 
     @visit_stmt

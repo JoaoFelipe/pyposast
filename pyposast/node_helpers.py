@@ -110,8 +110,9 @@ def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
     node.last_line, node.last_col = last
 
 
-def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True, inclusive=False):
+def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True, inclusive=False, delta=(0, 0)):
     position = ast_pos(node, bytes_pos_to_utf8)
+    position = (position[0] + delta[0], position[1] + delta[1])
     try:
         node.uid, first = keyword.find_next(position, inclusive=inclusive)
         if first != position:
