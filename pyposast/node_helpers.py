@@ -13,7 +13,7 @@ from .utils import (inc_tuple, dec_tuple, LineCol, position_between,
 
 class NodeWithPosition(object):
 
-    def __init__(self, last, first, kind=None):
+    def __init__(self, last, first, kind):
         self.first_line, self.first_col = first
         self.uid = self.last_line, self.last_col = last
         self.kind = kind
@@ -106,7 +106,7 @@ def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
     node.ids_pos = []
     for name in ids:
         last, first = names[name].find_next(last)
-        node.ids_pos.append(NodeWithPosition(last, first))
+        node.ids_pos.append(NodeWithPosition(last, first, '<name>'))
 
     node.last_line, node.last_col = last
 
@@ -159,14 +159,17 @@ def update_expr_parenthesis(code, parenthesis, node):
         node.pos_before = NodeWithPosition(
             original_start.tuple(),
             (node.first_line, node.first_col),
+            '(',
         )
         node.pos_inner = NodeWithPosition(
             original_end.tuple(),
             original_start.tuple(),
+            '<inner>'
         )
         node.pos_after = NodeWithPosition(
             (node.last_line, node.last_col),
             original_end.tuple(),
+            ')',
         )
 
 

@@ -315,6 +315,8 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16), '*')
         self.assertOperation(nodes[0].op_pos[4], (2, 17), (2, 18), (2, 18), ',')
         self.assertOperation(nodes[0].op_pos[5], (2, 19), (2, 21), (2, 21), '**')
+        self.assertPosition(nodes[0].vararg_node, (2, 16), (2, 17), (2, 17))
+        self.assertPosition(nodes[0].kwarg_node, (2, 21), (2, 22), (2, 22))
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3

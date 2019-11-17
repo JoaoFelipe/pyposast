@@ -616,11 +616,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
             if node.vararg:
                 last, first = self.names[node.vararg].find_next(position)
-                node.vararg_node = NodeWithPosition(last, first)
+                node.vararg_node = NodeWithPosition(last, first, '<vararg>')
 
             if node.kwarg:
                 last, first = self.names[node.kwarg].find_next(position)
-                node.kwarg_node = NodeWithPosition(last, first)
+                node.kwarg_node = NodeWithPosition(last, first, '<kwarg>')
 
 
         set_max_position(node)
@@ -939,7 +939,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node_position = (node.first_line, node.first_col)
         if only_python3 and node.name:
             last, first = self.names[node.name].find_next(node_position)
-            node.name_node = NodeWithPosition(last, first, 'name')
+            node.name_node = NodeWithPosition(last, first, '<name>')
 
         if node.name_node:
             position = (node.name_node.first_line, node.name_node.first_col)
@@ -1185,7 +1185,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
         position = (node.first_line, node.first_col)
         last, first = self.names[node.name].find_next(position)
-        node.name_node = NodeWithPosition(last, first, 'name')
+        node.name_node = NodeWithPosition(last, first, '<name>')
 
         len_keywords = len(getattr(node, "keywords", []))
         if len(node.bases) == 1 and len_keywords == 0:
@@ -1224,7 +1224,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.lineno = lineno
 
         last, first = self.names[node.name].find_next(first)
-        node.name_node = NodeWithPosition(last, first, 'name')
+        node.name_node = NodeWithPosition(last, first, '<name>')
 
         first, last = self.parenthesis.find_next(first)
         node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first, '('))
