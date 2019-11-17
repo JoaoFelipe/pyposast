@@ -137,7 +137,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             try:
                 pos = self.operators[ch].find_previous(position)
                 if previous_position < pos[1] < position:
-                    possible.append(pos)
+                    possible.append((pos, ch))
             except KeyError:
                 pass
 
@@ -145,9 +145,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             raise ValueError("not a single {} between {} and {}".format(
                 OPERATORS[node.__class__], previous_position, position))
 
-        return NodeWithPosition(
-            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
-        )
+        (last, first), ch = min(possible, key=lambda x: tuple(map(sub, position, x[0][0])))
+        return NodeWithPosition(last, first, ch)
 
     def calculate_unaryop(self, node, next_node):
         """Create new node for unaryop"""
@@ -157,22 +156,21 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             try:
                 pos = self.operators[ch].find_previous(position)
                 if pos[1] < position:
-                    possible.append(pos)
+                    possible.append((pos, ch))
             except KeyError:
                 pass
 
-        return NodeWithPosition(
-            *min(possible, key=lambda x: tuple(map(sub, position, x[0])))
-        )
+        (last, first), ch = min(possible, key=lambda x: tuple(map(sub, position, x[0][0])))
+        return NodeWithPosition(last, first, ch)
 
-    def uid_something_colon(self, node, inclusive=False):
+    def uid_something_colon(self, node, something, inclusive=False):
         """ Creates op_pos for node from uid to colon """
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), something)
         ]
         position = (node.body[0].first_line, node.body[0].first_col)
         last, first = self.operators[':'].find_previous(position, inclusive=inclusive)
-        node.op_pos.append(NodeWithPosition(last, first))
+        node.op_pos.append(NodeWithPosition(last, first, ':'))
         return last
 
     def optional_else(self, node, last):
@@ -184,7 +182,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 _, efirst = self.operators['else'].find_previous(position)
                 if efirst and efirst > last:
                     elast, _ = self.operators[':'].find_previous(position)
-                    node.op_pos.append(NodeWithPosition(elast, efirst))
+                    node.op_pos.append(NodeWithPosition(elast, efirst, 'else:'))
 
     def comma_separated_list(self, node, subnodes):
         """Process comma separated list """
@@ -254,7 +252,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             self.visit_NameConstant(node)
         elif isinstance(node.value, (int, float, complex)):
             self.visit_Num(node)
-        elif node.value is ...:
+        elif node.value is Ellipsis:
             self.visit_Ellipsis(node)
         else:
             nnode = self.dnode(node)
@@ -270,7 +268,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         last, _ = self.names[node.attr].find_next(position)
         node.last_line, node.last_col = last
         node.uid, first_dot = self.operators['.'].find_next(position)
-        node.op_pos = [NodeWithPosition(node.uid, first_dot)]
+        node.op_pos = [NodeWithPosition(node.uid, first_dot, '.')]
 
     @visit_all
     def visit_Index(self, node):
@@ -355,7 +353,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 for _ in range(2):
                     clast, cfirst = self.operators[':'].find_previous(position)
                     if cfirst and cfirst >= start:
-                        previous.op_pos.append(NodeWithPosition(clast, cfirst))
+                        previous.op_pos.append(NodeWithPosition(clast, cfirst, ':'))
                         position = inc_tuple(cfirst)
                     else:
                         break
@@ -368,8 +366,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         first, last = self.sbrackets.find_next(position)
         set_pos(node, first, last)
         node.op_pos = [
-            NodeWithPosition(inc_tuple(first), first),
-            NodeWithPosition(last, dec_tuple(last)),
+            NodeWithPosition(inc_tuple(first), first, '['),
+            NodeWithPosition(last, dec_tuple(last), ']'),
         ]
         node.first_line = node.value.first_line
         node.first_col = node.value.first_col
@@ -393,7 +391,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 first, last = find_next_comma(self.lcode, position)
                 if first:
                     # comma exists
-                    node.op_pos.append(NodeWithPosition(last, first))
+                    node.op_pos.append(NodeWithPosition(last, first, ','))
                     min_first_max_last(node, node.op_pos[-1])
 
     @visit_expr
@@ -412,8 +410,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         first = self.operators['`'].find_previous(position)[1]
         node.first_line, node.first_col = first
         node.op_pos = [
-            NodeWithPosition((node.first_line, node.first_col + 1), first),
-            NodeWithPosition(node.uid, (node.last_line, node.last_col - 1)),
+            NodeWithPosition((node.first_line, node.first_col + 1), first, '`'),
+            NodeWithPosition(node.uid, (node.last_line, node.last_col - 1), '`'),
         ]
 
     @visit_expr
@@ -422,7 +420,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         copy_info(node, node.func)
         position = (node.last_line, node.last_col)
         first, last = self.parenthesis.find_next(position)
-        node.op_pos.append(NodeWithPosition(inc_tuple(first), first))
+        node.op_pos.append(NodeWithPosition(inc_tuple(first), first, '('))
         node.uid = node.last_line, node.last_col = last
         children = []
         if hasattr(node, 'starargs'):  # Python <= 3.4
@@ -437,7 +435,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = (child[1].last_line, child[1].last_col)
             firstc, lastc = find_next_comma(self.lcode, position)
             if firstc:  # comma exists
-                child.append(NodeWithPosition(lastc, firstc))
+                child.append(NodeWithPosition(lastc, firstc, ','))
             else:
                 child.append(None)
 
@@ -448,7 +446,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
         node.arg_order = children
 
-        node.op_pos.append(NodeWithPosition(last, dec_tuple(last)))
+        node.op_pos.append(NodeWithPosition(last, dec_tuple(last), ')'))
 
     @visit_expr
     def visit_Compare(self, node):
@@ -472,7 +470,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         start_by_keyword(node, self.operators['await'], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.value)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'await')
         ]
 
     @visit_expr
@@ -481,7 +479,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         if node.value:
             min_first_max_last(node, node.value)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'yield')
         ]
 
     @visit_all
@@ -489,20 +487,22 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         set_max_position(node)
         if hasattr(node, 'is_async') and node.is_async:  # async in python 3.6
             r_set_previous_element(node, node.target, self.operators['async for'], inclusive=True)
+            kind = 'async for'
         else:
             r_set_previous_element(node, node.target, self.operators['for'], inclusive=True)
+            kind = 'for'
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), kind)
         ]
         min_first_max_last(node, node.iter)
         position = (node.iter.first_line, node.iter.first_col)
         last, first = self.operators['in'].find_previous(position, inclusive=True)
-        node.op_pos.append(NodeWithPosition(last, first))
+        node.op_pos.append(NodeWithPosition(last, first, 'in'))
         for eif in node.ifs:
             min_first_max_last(node, eif)
             position = dec_tuple((eif.first_line, eif.first_col))
             last, first = self.operators['if'].find_next(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, 'if'))
 
     @visit_expr
     def visit_GeneratorExp(self, node):
@@ -538,12 +538,12 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         for key, value in zip(node.keys, node.values):
             position = (key.last_line, key.last_col)
             first, last = find_next_colon(self.lcode, position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, ':'))
 
             position = (value.last_line, value.last_col)
             first, last = find_next_comma(self.lcode, position)
             if first:  # comma exists
-                node.op_pos.append(NodeWithPosition(last, first))
+                node.op_pos.append(NodeWithPosition(last, first, ','))
 
     @visit_expr
     def visit_IfExp(self, node):
@@ -554,8 +554,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.uid = self.operators['if'].find_previous(position, inclusive=True)[0]
         else_pos = self.operators['else'].find_next(position, inclusive=True)[0]
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.uid[0], node.uid[1] - 2)),
-            NodeWithPosition(else_pos, (else_pos[0], else_pos[1] - 4))
+            NodeWithPosition(node.uid, (node.uid[0], node.uid[1] - 2), 'if'),
+            NodeWithPosition(else_pos, (else_pos[0], else_pos[1] - 4), 'else')
         ]
 
     def update_arguments(self, args, previous, after):
@@ -572,8 +572,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.first_line, node.first_col = first
         self.update_arguments(node.args, after_lambda, before_colon)
         node.op_pos = [
-            NodeWithPosition(after_lambda, first),
-            NodeWithPosition(node.uid, before_colon),
+            NodeWithPosition(after_lambda, first, 'lambda'),
+            NodeWithPosition(node.uid, before_colon, ':'),
         ]
 
     @visit_all
@@ -584,7 +584,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             copy_info(node, node.annotation)
             position = (node.first_line, node.first_col)
             last, first = self.operators[':'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, ':'))
         else:
             node.last_line = nnode.lineno
             node.last_col = nnode.col_offset + len(node.arg)
@@ -747,7 +747,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         last = node.value
         node.last_line, node.last_col = last.last_line, last.last_col
         node.op_pos = [
-            NodeWithPosition(node.uid, dec_tuple(node.uid))
+            NodeWithPosition(node.uid, dec_tuple(node.uid), '*')
         ]
 
     @visit_expr
@@ -769,7 +769,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.uid, first = self.operators['yield from'].find_next(position)
         node.first_line, node.first_col = first
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'yield from')
         ]
 
     @visit_stmt
@@ -799,7 +799,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         keyword_followed_by_ids(node, self.operators['nonlocal'], self.names,
                                 node.names, self.bytes_pos_to_utf8)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'nonlocal')
         ]
         self.comma_separated_list(node, node.ids_pos)
 
@@ -808,7 +808,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         keyword_followed_by_ids(node, self.operators['global'], self.names,
                                 node.names, self.bytes_pos_to_utf8)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'global')
         ]
         self.comma_separated_list(node, node.ids_pos)
 
@@ -818,18 +818,18 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         start_by_keyword(node, self.operators['exec'],
                          self.bytes_pos_to_utf8, set_last=False)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'exec')
         ]
 
         if node.globals:
             position = self.dposition(node.globals)
             last, first = self.operators['in'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, 'in'))
             min_first_max_last(node, node.globals)
         if node.locals:
             position = self.dposition(node.locals)
             last, first = self.operators[','].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, ','))
             min_first_max_last(node, node.locals)
 
     def process_alias(self, position, alias):
@@ -844,7 +844,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         if alias.asname:
             last, _ = self.names[alias.asname].find_next(last)
             alast, afirst = self.operators["as"].find_previous(last)
-            alias.op_pos.append(NodeWithPosition(alast, afirst))
+            alias.op_pos.append(NodeWithPosition(alast, afirst, 'as'))
         alias.first_line, alias.first_col = first
         alias.uid = alias.last_line, alias.last_col = last
         return last
@@ -855,8 +855,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         last = node.uid
         last, first = self.operators['import'].find_next(last)
         node.op_pos = [
-            NodeWithPosition(node.uid, self.dposition(node)),
-            NodeWithPosition(last, first),
+            NodeWithPosition(node.uid, self.dposition(node), 'from'),
+            NodeWithPosition(last, first, 'import'),
         ]
         for alias in node.names:
             last = self.process_alias(last, alias)
@@ -870,7 +870,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         start_by_keyword(node, self.operators['import'],
                          self.bytes_pos_to_utf8)
         node.op_pos = [
-            NodeWithPosition(node.uid, self.dposition(node)),
+            NodeWithPosition(node.uid, self.dposition(node), 'import'),
         ]
         last = node.uid
         for alias in node.names:
@@ -883,13 +883,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         start_by_keyword(node, self.operators['assert'],
                          self.bytes_pos_to_utf8, set_last=False)
         node.op_pos = [
-            NodeWithPosition(node.uid, self.dposition(node)),
+            NodeWithPosition(node.uid, self.dposition(node), 'assert'),
         ]
         if node.msg:
             min_first_max_last(node, node.msg)
             position = self.dposition(node.msg)
             last, first = self.operators[','].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, ','))
 
     @visit_stmt
     def visit_TryFinally(self, node):
@@ -903,12 +903,12 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             node.op_pos = []
         else:
             node.op_pos = [
-                NodeWithPosition(last, self.dposition(node)),
+                NodeWithPosition(last, self.dposition(node), 'try:'),
             ]
         position = self.dposition(node.finalbody[0])
         last, _ = self.operators[':'].find_previous(position)
         _, first = self.operators['finally'].find_previous(position)
-        node.op_pos.append(NodeWithPosition(last, first))
+        node.op_pos.append(NodeWithPosition(last, first, 'finally:'))
 
     @visit_stmt
     def visit_TryExcept(self, node):
@@ -916,7 +916,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = node.uid
         last, _ = self.operators[':'].find_next(position)
         node.op_pos = [
-            NodeWithPosition(last, self.dposition(node)),
+            NodeWithPosition(last, self.dposition(node), 'try:'),
         ]
         last_body = node.body
         for handler in node.handlers:
@@ -926,30 +926,32 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = self.dposition(node.orelse[0])
             last, _ = self.operators[':'].find_previous(position)
             _, first = self.operators['else'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, 'else:'))
 
     @visit_all
     def visit_ExceptHandler(self, node):
         start_by_keyword(node, self.operators['except'],
                          self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
-        self.uid_something_colon(node)
+        self.uid_something_colon(node, 'except')
 
         node.name_node = node.name
         node_position = (node.first_line, node.first_col)
         if only_python3 and node.name:
             last, first = self.names[node.name].find_next(node_position)
-            node.name_node = NodeWithPosition(last, first)
+            node.name_node = NodeWithPosition(last, first, 'name')
 
         if node.name_node:
             position = (node.name_node.first_line, node.name_node.first_col)
             first = None
             if 'as' in self.operators:
                 last, first = self.operators["as"].find_previous(position)
+                kind = 'as'
             if not first:
                 last, first = self.operators[","].find_previous(position)
+                kind = ','
             if first and first > node_position:
-                node.op_pos.insert(1, NodeWithPosition(last, first))
+                node.op_pos.insert(1, NodeWithPosition(last, first, kind))
 
 
     @visit_stmt
@@ -958,7 +960,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = node.uid
         last, _ = self.operators[':'].find_next(position)
         node.op_pos = [
-            NodeWithPosition(last, self.dposition(node)),
+            NodeWithPosition(last, self.dposition(node), 'try:'),
         ]
         last_body = node.body
         for handler in node.handlers:
@@ -968,19 +970,19 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = self.dposition(node.orelse[0])
             last, _ = self.operators[':'].find_previous(position)
             _, first = self.operators['else'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, 'else:'))
         if node.finalbody:
             min_first_max_last(node, node.finalbody[-1])
             position = self.dposition(node.finalbody[0])
             last, _ = self.operators[':'].find_previous(position)
             _, first = self.operators['finally'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, 'finally:'))
 
     @visit_stmt
     def visit_Raise(self, node):
         start_by_keyword(node, self.operators['raise'], self.bytes_pos_to_utf8)
         node.op_pos = [
-            NodeWithPosition(node.uid, self.dposition(node)),
+            NodeWithPosition(node.uid, self.dposition(node), 'raise'),
         ]
         if 'type' in dir(node):  # Python 2
             children = [node.type, node.inst, node.tback]
@@ -991,7 +993,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 position = (child.last_line, child.last_col)
                 first, last = find_next_comma(self.lcode, position)
                 if first: # comma exists
-                    node.op_pos.append(NodeWithPosition(last, first))
+                    node.op_pos.append(NodeWithPosition(last, first, ','))
 
         else:  # Python 3
             children = [node.exc, node.cause]
@@ -1002,14 +1004,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             if node.cause:
                 position = self.dposition(node.cause)
                 last, first = self.operators['from'].find_previous(position)
-                node.op_pos.append(NodeWithPosition(last, first))
+                node.op_pos.append(NodeWithPosition(last, first, 'from'))
 
     @visit_stmt
     def visit_With(self, node, keyword='with'):
         start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         min_first_max_last(node, node.body[-1])
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), keyword)
         ]
         skip_colon = False
         if hasattr(node, 'optional_vars'):  # Python 2
@@ -1018,13 +1020,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 var = node.optional_vars
                 position = (var.first_line, var.first_col)
                 last, first = self.operators['as'].find_previous(position)
-                node.op_pos.append(NodeWithPosition(last, first))
+                node.op_pos.append(NodeWithPosition(last, first, 'as'))
                 last_node = var
             if len(node.body) == 1 and isinstance(node.body[0], ast.With):
                 position = (last_node.last_line, last_node.last_col)
                 last, first = self.operators[','].find_next(position)
                 if first:
-                    node.body[0].op_pos[0] = NodeWithPosition(last, first)
+                    node.body[0].op_pos[0] = NodeWithPosition(last, first, ',')
                 skip_colon = True
         else:
             self.comma_separated_list(node, node.items)
@@ -1032,7 +1034,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         if not skip_colon:
             position = (node.body[0].first_line, node.body[0].first_col)
             last, first = self.operators[':'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, ':'))
 
     def visit_AsyncWith(self, node):
         """ Python 3.5 """
@@ -1047,20 +1049,20 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             var = node.optional_vars
             position = (var.first_line, var.first_col)
             last, first = self.operators['as'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, 'as'))
 
     @visit_stmt
-    def visit_If(self, node):
+    def visit_If(self, node, keyword='if'):
         start_by_keyword(node, self.operators['if'], self.bytes_pos_to_utf8, inclusive=True)
         min_first_max_last(node, node.body[-1])
-        last = self.uid_something_colon(node)
+        last = self.uid_something_colon(node, 'elif' if node.uid[1] - node.first_col == 4 else 'if')
         self.optional_else(node, last)
 
     @visit_stmt
     def visit_While(self, node):
         start_by_keyword(node, self.operators['while'], self.bytes_pos_to_utf8, inclusive=True)
         min_first_max_last(node, node.body[-1])
-        last = self.uid_something_colon(node)
+        last = self.uid_something_colon(node, 'while')
         self.optional_else(node, last)
 
     @visit_stmt
@@ -1070,10 +1072,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         start_by_keyword(node, self.operators['for'], self.bytes_pos_to_utf8,  inclusive=True, delta=delta)
         node.first_line, node.first_col = first
         min_first_max_last(node, node.body[-1])
-        last = self.uid_something_colon(node)
+        last = self.uid_something_colon(node, 'for' if keyword == 'for' else keyword + ' for')
         position = (node.iter.first_line, node.iter.first_col)
         last, first = self.operators['in'].find_previous(position, inclusive=True)
-        node.op_pos.insert(1, NodeWithPosition(last, first))
+        node.op_pos.insert(1, NodeWithPosition(last, first, 'in'))
         self.optional_else(node, last)
 
     def visit_AsyncFor(self, node):
@@ -1086,14 +1088,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         """ Python 2 """
         start_by_keyword(node, self.operators['print'], self.bytes_pos_to_utf8)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'print')
         ]
         subnodes = []
         if node.dest:
             min_first_max_last(node, node.dest)
             position = (node.dest.first_line, node.dest.first_col)
             last, first = self.operators['>>'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, '>>'))
             subnodes.append(node.dest)
         if node.values:
             min_first_max_last(node, node.values[-1])
@@ -1150,7 +1152,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             min_first_max_last(node, target)
 
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'del')
         ]
         self.comma_separated_list(node, node.targets)
 
@@ -1159,7 +1161,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         start_by_keyword(node, self.operators['return'],
                          self.bytes_pos_to_utf8)
         node.op_pos = [
-            NodeWithPosition(node.uid, (node.first_line, node.first_col))
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'return')
         ]
         if node.value:
             min_first_max_last(node, node.value)
@@ -1169,12 +1171,12 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         last, first = self.operators['@'].find_previous(position)
         if (node.first_line, node.first_col) == position:
             node.first_line, node.first_col = first
-        node.op_pos.insert(-2, NodeWithPosition(last, first))
+        node.op_pos.insert(-2, NodeWithPosition(last, first, '@'))
 
     @visit_stmt
     def visit_ClassDef(self, node):
         start_by_keyword(node, self.operators['class'], self.bytes_pos_to_utf8)
-        self.uid_something_colon(node)
+        self.uid_something_colon(node, 'class')
         for dec in node.decorator_list:
             min_first_max_last(node, dec)
             self.adjust_decorator(node, dec)
@@ -1183,7 +1185,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
         position = (node.first_line, node.first_col)
         last, first = self.names[node.name].find_next(position)
-        node.name_node = NodeWithPosition(last, first)
+        node.name_node = NodeWithPosition(last, first, 'name')
 
         len_keywords = len(getattr(node, "keywords", []))
         if len(node.bases) == 1 and len_keywords == 0:
@@ -1196,11 +1198,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = (node.first_line, node.first_col + 1)
         if node.arg:
             node.uid, first = self.operators['='].find_previous(position)
-            node.op_pos.append(NodeWithPosition(node.uid, first))
+            node.op_pos.append(NodeWithPosition(node.uid, first, '='))
             _, first = self.names[node.arg].find_previous(first)
         else:
             node.uid, first = self.operators['**'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(node.uid, first))
+            node.op_pos.append(NodeWithPosition(node.uid, first, '**'))
         node.first_line, node.first_col = first
 
     @visit_stmt
@@ -1210,7 +1212,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             node.lineno = max(node.lineno, dec.last_line + 1)
         start_by_keyword(node, self.operators[keyword], self.bytes_pos_to_utf8)
         first = node.first_line, node.first_col
-        self.uid_something_colon(node)
+        self.uid_something_colon(node, keyword)
         previous, last = self.parenthesis.find_next(node.uid)
         self.update_arguments(node.args, inc_tuple(previous), dec_tuple(last))
 
@@ -1222,15 +1224,15 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.lineno = lineno
 
         last, first = self.names[node.name].find_next(first)
-        node.name_node = NodeWithPosition(last, first)
+        node.name_node = NodeWithPosition(last, first, 'name')
 
         first, last = self.parenthesis.find_next(first)
-        node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first))
-        node.op_pos.insert(-1, NodeWithPosition(last, dec_tuple(last)))
+        node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first, '('))
+        node.op_pos.insert(-1, NodeWithPosition(last, dec_tuple(last), ')'))
 
         if hasattr(node, 'returns') and node.returns:  # Python 3
             last, first = self.operators['->'].find_next(last)
-            node.op_pos.insert(-1, NodeWithPosition(last, first))
+            node.op_pos.insert(-1, NodeWithPosition(last, first, '->'))
 
     def visit_AsyncFunctionDef(self, node):
         """ Python 3.5 """
