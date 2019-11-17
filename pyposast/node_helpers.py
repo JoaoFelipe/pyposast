@@ -13,9 +13,10 @@ from .utils import (inc_tuple, dec_tuple, LineCol, position_between,
 
 class NodeWithPosition(object):
 
-    def __init__(self, last, first):
+    def __init__(self, last, first, kind=None):
         self.first_line, self.first_col = first
         self.uid = self.last_line, self.last_col = last
+        self.kind = kind
 
     def __repr__(self):
         return (

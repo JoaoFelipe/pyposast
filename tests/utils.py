@@ -19,12 +19,12 @@ class NodeTestCase(unittest.TestCase):
     """Base test case"""
     # pylint: disable=invalid-name
 
-    def assertPosition(self, node, first, last, uid):
+    def assertPosition(self, node, first, last, uid, messages=None):
         """Check node positions"""
         # pylint: disable=no-self-use
         node_first = (node.first_line, node.first_col)
         node_last = (node.last_line, node.last_col)
-        messages = []
+        messages = messages or []
         if not node_first == first:
             messages.append(
                 'first does not match: {} != {}'.format(node_first, first))
@@ -36,6 +36,15 @@ class NodeTestCase(unittest.TestCase):
                 'uid does not match: {} != {}'.format(node.uid, uid))
         if messages:
             raise AssertionError('\n'.join(messages))
+
+    def assertOperation(self, node, first, last, uid, kind):
+        messages = []
+        if not node.kind == kind:
+            messages.append(
+                'kind does not match: {} != {}'.format(node.kind, kind)
+            )
+        self.assertPosition(node, first, last, uid, messages=messages)
+        
 
     def assertNoBeforeInnerAfter(self, node):
         """Check if node does not have pos_before, pos_inner, pos_after"""

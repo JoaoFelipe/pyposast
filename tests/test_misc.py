@@ -7,7 +7,7 @@ from __future__ import (absolute_import, division)
 import ast
 
 from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35, only_python36
+from .utils import only_python2, only_python3, only_python35, only_python36, only_python38
 
 
 class TestMisc(NodeTestCase):
@@ -309,12 +309,12 @@ class TestMisc(NodeTestCase):
                 "lambda x, y=2, *z, **w : x")
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 7), (2, 22), (2, 22))
-        self.assertPosition(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9))
-        self.assertPosition(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12))
-        self.assertPosition(nodes[0].op_pos[2], (2, 13), (2, 14), (2, 14))
-        self.assertPosition(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16))
-        self.assertPosition(nodes[0].op_pos[4], (2, 17), (2, 18), (2, 18))
-        self.assertPosition(nodes[0].op_pos[5], (2, 19), (2, 21), (2, 21))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12), '=')
+        self.assertOperation(nodes[0].op_pos[2], (2, 13), (2, 14), (2, 14), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16), '*')
+        self.assertOperation(nodes[0].op_pos[4], (2, 17), (2, 18), (2, 18), ',')
+        self.assertOperation(nodes[0].op_pos[5], (2, 19), (2, 21), (2, 21), '**')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3
@@ -323,10 +323,10 @@ class TestMisc(NodeTestCase):
                 "lambda x, *, y=2: x")
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 7), (2, 16), (2, 16))
-        self.assertPosition(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9))
-        self.assertPosition(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11))
-        self.assertPosition(nodes[0].op_pos[2], (2, 11), (2, 12), (2, 12))
-        self.assertPosition(nodes[0].op_pos[3], (2, 14), (2, 15), (2, 15))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '*')
+        self.assertOperation(nodes[0].op_pos[2], (2, 11), (2, 12), (2, 12), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 14), (2, 15), (2, 15), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_arguments3(self):
@@ -343,12 +343,12 @@ class TestMisc(NodeTestCase):
                 "    x")
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 7), (2, 22), (2, 22))
-        self.assertPosition(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9))
-        self.assertPosition(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12))
-        self.assertPosition(nodes[0].op_pos[2], (2, 13), (2, 14), (2, 14))
-        self.assertPosition(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16))
-        self.assertPosition(nodes[0].op_pos[4], (2, 17), (2, 18), (2, 18))
-        self.assertPosition(nodes[0].op_pos[5], (2, 19), (2, 21), (2, 21))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12), '=')
+        self.assertOperation(nodes[0].op_pos[2], (2, 13), (2, 14), (2, 14), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16), '*')
+        self.assertOperation(nodes[0].op_pos[4], (2, 17), (2, 18), (2, 18), ',')
+        self.assertOperation(nodes[0].op_pos[5], (2, 19), (2, 21), (2, 21), '**')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @only_python3
@@ -357,10 +357,10 @@ class TestMisc(NodeTestCase):
                 "def f(x, *, y=2): x")
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 6), (2, 15), (2, 15))
-        self.assertPosition(nodes[0].op_pos[0], (2, 7), (2, 8), (2, 8))
-        self.assertPosition(nodes[0].op_pos[1], (2, 9), (2, 10), (2, 10))
-        self.assertPosition(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11))
-        self.assertPosition(nodes[0].op_pos[3], (2, 13), (2, 14), (2, 14))
+        self.assertOperation(nodes[0].op_pos[0], (2, 7), (2, 8), (2, 8), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 9), (2, 10), (2, 10), '*')
+        self.assertOperation(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 13), (2, 14), (2, 14), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_arguments6(self):
@@ -387,11 +387,99 @@ class TestMisc(NodeTestCase):
                 "def f(x, *, y, z=2): x")
         nodes = get_nodes(code, ast.arguments)
         self.assertPosition(nodes[0], (2, 6), (2, 18), (2, 18))
-        self.assertPosition(nodes[0].op_pos[0], (2, 7), (2, 8), (2, 8))
-        self.assertPosition(nodes[0].op_pos[1], (2, 9), (2, 10), (2, 10))
-        self.assertPosition(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11))
-        self.assertPosition(nodes[0].op_pos[3], (2, 13), (2, 14), (2, 14))
-        self.assertPosition(nodes[0].op_pos[4], (2, 16), (2, 17), (2, 17))
+        self.assertOperation(nodes[0].op_pos[0], (2, 7), (2, 8), (2, 8), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 9), (2, 10), (2, 10), '*')
+        self.assertOperation(nodes[0].op_pos[2], (2, 10), (2, 11), (2, 11), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 13), (2, 14), (2, 14), ',')
+        self.assertOperation(nodes[0].op_pos[4], (2, 16), (2, 17), (2, 17), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_positional_only(self):
+        code = ("#bla\n"
+                "def f(p1, p2, /, p_or_kw, *, kw):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 31), (2, 31))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 12), (2, 13), (2, 13), ',')
+        self.assertOperation(nodes[0].op_pos[2], (2, 14), (2, 15), (2, 15), '/')
+        self.assertOperation(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16), ',')
+        self.assertOperation(nodes[0].op_pos[4], (2, 24), (2, 25), (2, 25), ',')
+        self.assertOperation(nodes[0].op_pos[5], (2, 26), (2, 27), (2, 27), '*')
+        self.assertOperation(nodes[0].op_pos[6], (2, 27), (2, 28), (2, 28), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_positional_only2(self):
+        code = ("#bla\n"
+                "def f(p1, p2=None, /, p_or_kw=None, *, kw):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 41), (2, 41))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 12), (2, 13), (2, 13), '=')
+        self.assertOperation(nodes[0].op_pos[2], (2, 17), (2, 18), (2, 18), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 19), (2, 20), (2, 20), '/')
+        self.assertOperation(nodes[0].op_pos[4], (2, 20), (2, 21), (2, 21), ',')
+        self.assertOperation(nodes[0].op_pos[5], (2, 29), (2, 30), (2, 30), '=')
+        self.assertOperation(nodes[0].op_pos[6], (2, 34), (2, 35), (2, 35), ',')
+        self.assertOperation(nodes[0].op_pos[7], (2, 36), (2, 37), (2, 37), '*')
+        self.assertOperation(nodes[0].op_pos[8], (2, 37), (2, 38), (2, 38), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_positional_only3(self):
+        code = ("#bla\n"
+                "def f(p1, p2=None, /, *, kw):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 27), (2, 27))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 12), (2, 13), (2, 13), '=')
+        self.assertOperation(nodes[0].op_pos[2], (2, 17), (2, 18), (2, 18), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 19), (2, 20), (2, 20), '/')
+        self.assertOperation(nodes[0].op_pos[4], (2, 20), (2, 21), (2, 21), ',')
+        self.assertOperation(nodes[0].op_pos[5], (2, 22), (2, 23), (2, 23), '*')
+        self.assertOperation(nodes[0].op_pos[6], (2, 23), (2, 24), (2, 24), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_positional_only4(self):
+        code = ("#bla\n"
+                "def f(p1, p2=None, /):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 20), (2, 20))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 12), (2, 13), (2, 13), '=')
+        self.assertOperation(nodes[0].op_pos[2], (2, 17), (2, 18), (2, 18), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 19), (2, 20), (2, 20), '/')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_positional_only5(self):
+        code = ("#bla\n"
+                "def f(p1, p2, /, p_or_kw):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 24), (2, 24))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 12), (2, 13), (2, 13), ',')
+        self.assertOperation(nodes[0].op_pos[2], (2, 14), (2, 15), (2, 15), '/')
+        self.assertOperation(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python38
+    def test_positional_only6(self):
+        code = ("#bla\n"
+                "def f(p1, p2, /):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.arguments)
+        self.assertPosition(nodes[0], (2, 6), (2, 15), (2, 15))
+        self.assertOperation(nodes[0].op_pos[0], (2, 8), (2, 9), (2, 9), ',')
+        self.assertOperation(nodes[0].op_pos[1], (2, 12), (2, 13), (2, 13), ',')
+        self.assertOperation(nodes[0].op_pos[2], (2, 14), (2, 15), (2, 15), '/')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_invert(self):

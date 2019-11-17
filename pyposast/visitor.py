@@ -192,7 +192,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = (item.last_line, item.last_col)
             first, last = find_next_comma(self.lcode, position)
             if first:  # comma exists
-                node.op_pos.append(NodeWithPosition(last, first))
+                node.op_pos.append(NodeWithPosition(last, first, ','))
 
     @visit_expr
     def visit_Name(self, node):
@@ -596,7 +596,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = (sub.last_line, sub.last_col)
         first, last = find_next_comma(self.lcode, position)
         if first:  # comma exists
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, ','))
 
     @visit_all
     def visit_arguments(self, node):
@@ -629,13 +629,43 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         for arg in node.defaults:
             min_first_max_last(node, arg)
 
-        # Positional args / defaults
-        pos_args = node.args[:-len(node.defaults) or None]
+        
+        if len(node.defaults) >= len(node.args):
+            pos_args = []
+            args_with_defaults = zip(node.args, node.defaults[-len(node.args):])
+            pos_only_args = []
+            pos_only_with_defaults = []
+            if only_python38:
+                pos_only_defaults = node.defaults[:-len(node.args) or None]
+                pos_only_args = node.posonlyargs[:-len(pos_only_defaults) or None]
+                pos_only_with_defaults = zip(node.posonlyargs[-len(pos_only_defaults):], node.defaults)
+        else:
+            pos_args = node.args[:-len(node.defaults) or None]
+            args_with_defaults = zip(node.args[len(pos_args):], node.defaults)
+            pos_only_args = node.posonlyargs if only_python38 else []
+            pos_only_with_defaults = []
+
+        # Positional only (Python 3.8)
+        if only_python38:
+            self.comma_separated_list(node, pos_only_args)
+            for arg, default in pos_only_with_defaults:
+                position = (arg.last_line, arg.last_col)
+                first, last = find_next_equal(self.lcode, position)
+                node.op_pos.append(NodeWithPosition(last, first, '='))
+                self.find_next_comma(node, default)
+            if node.posonlyargs:
+                position = (node.posonlyargs[-1].last_line, node.posonlyargs[-1].last_col)
+                last, first = self.operators['/'].find_next(position)
+                node.op_pos.append(NodeWithPosition(last, first, '/'))
+                self.find_next_comma(node, node.op_pos[-1])
+                
+
+        # Positional args that accept keywords
         self.comma_separated_list(node, pos_args)
-        for arg, default in zip(node.args[len(pos_args):], node.defaults):
+        for arg, default in args_with_defaults:
             position = (arg.last_line, arg.last_col)
             first, last = find_next_equal(self.lcode, position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, '='))
             self.find_next_comma(node, default)
 
         # *args
@@ -644,7 +674,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
             position = (node.vararg_node.first_line, node.vararg_node.first_col)
             last, first = self.operators['*'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, '*'))
             self.find_next_comma(node, node.vararg_node)
 
         # **kwargs
@@ -653,14 +683,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
             position = (node.kwarg_node.first_line, node.kwarg_node.first_col)
             last, first = self.operators['**'].find_previous(position)
-            node.op_pos.append(NodeWithPosition(last, first))
+            node.op_pos.append(NodeWithPosition(last, first, '**'))
             self.find_next_comma(node, node.kwarg_node)
 
         if hasattr(node, 'kwonlyargs'):  # Python 3
             if node.kwonlyargs and not node.vararg:
                 position = (node.kwonlyargs[0].first_line, node.kwonlyargs[0].first_col)
                 last, first = self.operators['*'].find_previous(position)
-                node.op_pos.append(NodeWithPosition(last, first))
+                node.op_pos.append(NodeWithPosition(last, first, '*'))
                 self.find_next_comma(node, node.op_pos[-1])
 
             for arg, default in zip(node.kwonlyargs, node.kw_defaults):
@@ -671,7 +701,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                     last_node = default
                     position = (arg.last_line, arg.last_col)
                     first, last = find_next_equal(self.lcode, position)
-                    node.op_pos.append(NodeWithPosition(last, first))
+                    node.op_pos.append(NodeWithPosition(last, first, '='))
                 self.find_next_comma(node, last_node)
 
         node.uid = (node.last_line, node.last_col)
