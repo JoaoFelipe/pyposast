@@ -9,12 +9,6 @@ from __future__ import (absolute_import, division)
 import unittest
 
 
-from pyposast.cross_version import only_python2, only_python3
-from pyposast.cross_version import only_python35, only_python36
-from pyposast.cross_version import only_python38
-from pyposast import get_nodes
-
-
 class NodeTestCase(unittest.TestCase):
     """Base test case"""
     # pylint: disable=invalid-name
@@ -44,7 +38,6 @@ class NodeTestCase(unittest.TestCase):
                 'kind does not match: {} != {}'.format(node.kind, kind)
             )
         self.assertPosition(node, first, last, uid, messages=messages)
-        
 
     def assertNoBeforeInnerAfter(self, node):
         """Check if node does not have pos_before, pos_inner, pos_after"""

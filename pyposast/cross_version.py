@@ -41,10 +41,12 @@ else:
 
 only_python2 = SelectVersion(lambda x: x < (3, 0))
 only_python3 = SelectVersion(lambda x: x >= (3, 0))
-only_python35 = SelectVersion(lambda x: x >= (3, 5))
-only_python36 = SelectVersion(lambda x: x >= (3, 6))
-only_python37 = SelectVersion(lambda x: x >= (3, 7))
-only_python38 = SelectVersion(lambda x: x >= (3, 8))
+ge_python35 = SelectVersion(lambda x: x >= (3, 5))
+ge_python36 = SelectVersion(lambda x: x >= (3, 6))
+ge_python37 = SelectVersion(lambda x: x >= (3, 7))
+ge_python38 = SelectVersion(lambda x: x >= (3, 8))
+ge_python39 = SelectVersion(lambda x: x >= (3, 9))
+lt_python39 = SelectVersion(lambda x: x < (3, 9))
 
 if only_python3:
     from tokenize import detect_encoding

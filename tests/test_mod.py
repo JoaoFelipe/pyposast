@@ -6,7 +6,9 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase, only_python2, only_python3, only_python38
+from .utils import NodeTestCase
+from pyposast import get_nodes
+from pyposast.cross_version import ge_python38
 
 
 class TestMod(NodeTestCase):
@@ -37,7 +39,7 @@ class TestMod(NodeTestCase):
         self.assertPosition(nodes[0], (1, 0), (1, 1), (1, 1))
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_type_ignore(self):
         code = ("# type: ignore\n"
                 "def f():\n"

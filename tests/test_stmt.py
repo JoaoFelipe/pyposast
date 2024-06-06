@@ -7,8 +7,10 @@ from __future__ import (absolute_import, division)
 import ast
 import sys
 
-from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35, only_python36
+from .utils import NodeTestCase
+from pyposast import get_nodes
+from pyposast.cross_version import only_python2, only_python3, ge_python35
+from pyposast.cross_version import ge_python36
 
 
 def nprint(nodes):
@@ -353,7 +355,7 @@ class TestStmt(NodeTestCase):
             self.assertOperation(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12), ',')
             self.assertOperation(nodes[0].op_pos[2], (2, 20), (2, 21), (2, 21), ':')
 
-    @only_python35
+    @ge_python35
     def test_async_with(self):
         code = ("async def f():\n"
                 "    async with x as f:\n"
@@ -532,7 +534,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[1].op_pos[2], (4, 11), (4, 12), (4, 12), ':')
         self.assertNoBeforeInnerAfter(nodes[1])
 
-    @only_python35
+    @ge_python35
     def test_async_for(self):
         code = ("async def f():\n"
                 "    async for x in l:\n"
@@ -544,7 +546,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[2], (2, 20), (2, 21), (2, 21), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python35
+    @ge_python35
     def test_async_for2(self):
         code = ("async def f():\n"
                 "    async for(x)in(l):\n"
@@ -623,7 +625,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 2), (2, 4), (2, 4), '+=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_ann_assign(self):
         code = ("#bla\n"
                 "a: int = 1")
@@ -633,7 +635,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_ann_assign2(self):
         code = ("#bla\n"
                 "a: int")
@@ -642,7 +644,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_ann_assign3(self):
         code = ("#bla\n"
                 "(a): int")
@@ -651,7 +653,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_ann_assign4(self):
         code = ("#bla\n"
                 "(a):(int)\n"
@@ -843,7 +845,7 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[1].op_pos[4], (5, 7), (5, 8), (5, 8), ':')
         self.assertNoBeforeInnerAfter(nodes[1])
 
-    @only_python35
+    @ge_python35
     def test_async_function_def(self):
         code = ("#bla\n"
                 "async def f(x, y=2, *z, **w):\n"

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PyPosAST"
+description="Extends Python ast nodes with positional informations"
+readme = "README.md"
+authors = [
+  { name="João Felipe Pimentel", email="joaofelipenp@gmail.com" },
+]
+license = {text = "MIT License"}
+keywords = ["ast", "python", "position", "offset"]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/JoaoFelipe/PyPosAST"
+Repository = "https://github.com/JoaoFelipe/PyPosAST.git"
+Issues = "https://github.com/JoaoFelipe/PyPosAST/issues"
+
+[tool.setuptools]
+packages = [
+    "pyposast",
+]
+
+[tool.distutils.bdist_wheel]
+universal = true

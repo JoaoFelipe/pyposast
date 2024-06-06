@@ -12,7 +12,8 @@ from operator import sub
 from functools import wraps
 
 from .cross_version import only_python2, only_python3, native_decode_source
-from .cross_version import only_python36, only_python37, only_python38
+from .cross_version import ge_python36, ge_python37, ge_python38, lt_python39
+from .cross_version import ge_python39
 from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
@@ -213,7 +214,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = self.dposition(node)
         r_set_pos(node, *self.strings.find_next(position))
 
-    @only_python36
+    @ge_python36
     def visit_JoinedStr(self, node):
         position = self.dposition(node)
         last_position = (node.lineno, node.col_offset)
@@ -231,7 +232,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = self.dposition(node)
         r_set_pos(node, *self.strings.find_next(position))
 
-    @only_python36
+    @ge_python36
     def visit_FormattedValue(self, node):
         set_pos(node, *node.bracket)
         self.visit(node.value)
@@ -239,7 +240,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             self.visit(node.format_spec)
         update_expr_parenthesis(self.lcode, self.parenthesis, node)
 
-    @only_python36
+    @ge_python36
     @visit_expr
     def visit_Constant(self, node):
         # Python 3.8 deprecated ast.Num, ast.Str, ast.Bytes, ast.NameConstant, ast.Ellipsis
@@ -270,6 +271,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.uid, first_dot = self.operators['.'].find_next(position)
         node.op_pos = [NodeWithPosition(node.uid, first_dot, '.')]
 
+    @lt_python39
     @visit_all
     def visit_Index(self, node):
         copy_info(node, node.value)
@@ -282,7 +284,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = self.dposition(node)
             r_set_pos(node, *self.operators['...'].find_next(position))
 
-    @visit_all
+    @(visit_all if lt_python39 else visit_expr)
     def visit_Slice(self, node):
         set_max_position(node)
         children = [node.lower, node.upper, node.step]
@@ -306,7 +308,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             min_first_max_last(node, sub_node)
 
     def process_slice(self, the_slice, previous):
-        if isinstance(the_slice, ast.Ellipsis):
+        if only_python2 and isinstance(the_slice, ast.Ellipsis):
             """Python 2 ellipsis has no location"""
             position = (previous.last_line, previous.last_col + 1)
             r_set_pos(the_slice, *self.operators['...'].find_next(position))
@@ -320,7 +322,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             if not the_slice.upper and not the_slice.step:
                 the_slice.last_line, the_slice.last_col = the_slice.uid
 
-        elif isinstance(the_slice, ast.ExtSlice):
+        elif (
+            (lt_python39 and isinstance(the_slice, ast.ExtSlice))
+            or (ge_python39 and isinstance(the_slice, ast.Tuple))
+        ):
             set_max_position(the_slice)
 
             last_dim = previous
@@ -337,11 +342,16 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                              the_slice.dims[0].last_col + 1)
 
     def post_process_slice(self, previous, position):
-        if isinstance(previous, ast.ExtSlice):
+        if lt_python39:
+            ext_slice = ast.ExtSlice
+        else:
+            ext_slice = ast.Tuple
+
+        if isinstance(previous, ext_slice):
             self.post_process_slice(previous.dims[-1], position)
             previous.op_pos = []
             self.comma_separated_list(previous, previous.dims)
-        if isinstance(previous, (ast.Slice, ast.ExtSlice)):
+        if isinstance(previous, (ast.Slice, ext_slice)):
             new_position = self.operators[':'].find_previous(position)[0]
             if new_position > (previous.last_line, previous.last_col):
                 previous.last_line, previous.last_col = new_position
@@ -635,18 +645,18 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             args_with_defaults = zip(node.args, node.defaults[-len(node.args):])
             pos_only_args = []
             pos_only_with_defaults = []
-            if only_python38:
+            if ge_python38:
                 pos_only_defaults = node.defaults[:-len(node.args) or None]
                 pos_only_args = node.posonlyargs[:-len(pos_only_defaults) or None]
                 pos_only_with_defaults = zip(node.posonlyargs[-len(pos_only_defaults):], node.defaults)
         else:
             pos_args = node.args[:-len(node.defaults) or None]
             args_with_defaults = zip(node.args[len(pos_args):], node.defaults)
-            pos_only_args = node.posonlyargs if only_python38 else []
+            pos_only_args = node.posonlyargs if ge_python38 else []
             pos_only_with_defaults = []
 
         # Positional only (Python 3.8)
-        if only_python38:
+        if ge_python38:
             self.comma_separated_list(node, pos_only_args)
             for arg, default in pos_only_with_defaults:
                 position = (arg.last_line, arg.last_col)
@@ -1080,7 +1090,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     def visit_AsyncFor(self, node):
         """ Python 3.5 """
-        self.visit_For(node, keyword='async', delta=(0, 6) if only_python37 else (0, 0))
+        self.visit_For(node, keyword='async', delta=(0, 6) if ge_python37 else (0, 0))
 
 
     @visit_stmt
@@ -1238,7 +1248,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         """ Python 3.5 """
         self.visit_FunctionDef(node, keyword='async def')
 
-    @only_python38
+    @ge_python38
     def visit_TypeIgnore(self, node):
         nnode = copy(node)
         nnode.lineno += self.dline
@@ -1247,7 +1257,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.first_col = node.last_col - 12 - len(node.tag)
         node.uid = (node.last_line, node.last_col)
 
-    @only_python38
+    @ge_python38
     @visit_expr
     def visit_NamedExpr(self, node):
         set_max_position(node)

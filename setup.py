@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import subprocess
 import sys
-from setuptools import setup, find_packages
+import setuptools
 
 def get_version():
     """Use git describe to get version from tag"""
     proc = subprocess.Popen(
-        ("git", "describe", "--tag", "--always"), 
+        ("git", "describe", "--tag", "--always"),
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
     output, _ = proc.communicate()
@@ -27,24 +27,8 @@ def get_version():
         )
     return version
 
-try:
-    import pypandoc
-    long_description = pypandoc.convert('README.md', 'rst')
-except (IOError, ImportError):
-    sys.stderr.write(
-        ">>> Please verify the pypandoc installation.\n"
-    )
-    long_description = "Extends Python ast nodes with positional informations"
 
-setup(
-    name="PyPosAST",
-    version=get_version(),
-    description="Extends Python ast nodes with positional informations",
-    long_description=long_description,
-    packages=find_packages(exclude=["tests_*", "tests"]),
-    author=("Joao Pimentel",),
-    author_email="joaofelipenp@gmail.com",
-    license="MIT",
-    keywords="ast python position offset",
-    url="https://github.com/JoaoFelipe/PyPosAST",
-)
+if __name__ == "__main__":
+    setuptools.setup(
+        version=get_version()
+    )

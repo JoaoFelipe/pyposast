@@ -7,7 +7,8 @@ from __future__ import (absolute_import, division)
 import ast
 import textwrap
 
-from .utils import get_nodes, NodeTestCase, only_python2, only_python3
+from .utils import NodeTestCase
+from pyposast import get_nodes
 
 
 class TestExtra(NodeTestCase):

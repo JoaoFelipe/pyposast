@@ -7,8 +7,10 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35, only_python36, only_python38
+from .utils import NodeTestCase
+from pyposast import get_nodes
+from pyposast.cross_version import only_python2, only_python3, ge_python35
+from pyposast.cross_version import ge_python36, ge_python38, lt_python39
 
 
 def nprint(nodes):
@@ -485,7 +487,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), '<')
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (3, 2))
 
-    @only_python35
+    @ge_python35
     def test_await(self):
         code = ("async def f():\n"
                 "    await   2")
@@ -494,7 +496,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 4), (2, 9), (2, 9), 'await')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python35
+    @ge_python35
     def test_await2(self):
         code = ("async def f():\n"
                 "    (await \n"
@@ -620,7 +622,7 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0], (2, 0), (4, 7), (4, 7))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (4, 6))
 
-    @only_python36
+    @ge_python36
     def test_async_comp(self):
         code = ("#bla\n"
                 "async def f():\n"
@@ -839,7 +841,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), '*')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python3
+    @lt_python39
     def test_starred2(self):
         code = ("#bla\n"
                 "a, (* b) = 1, 2, 3")
@@ -857,7 +859,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), '*')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python35
+    @ge_python35
     def test_starred4(self):
         code = ("#bla\n"
                 "f(*a, 5, *b)")
@@ -869,7 +871,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[1].op_pos[0], (2, 9), (2, 10), (2, 10), '*')
         self.assertNoBeforeInnerAfter(nodes[1])
 
-    @only_python35
+    @ge_python35
     def test_starred5(self):
         code = ("#bla\n"
                 "i, j, k, l, m = *a, 5, *b")
@@ -991,7 +993,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[1].op_pos[0], (3, 1), (3, 11), (3, 11), 'yield from')
         self.assertSimpleInnerPosition(nodes[1], (3, 1), (3, 14))
 
-    @only_python36
+    @ge_python36
     def test_joined_str(self):
         code = ("#bla\n"
                 "a = 2\n"
@@ -1000,7 +1002,7 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0], (3, 0), (3, 6), (3, 6))
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_formatted_value(self):
         code = ("#bla\n"
                 "a = 2\n"
@@ -1014,7 +1016,7 @@ class TestExpr(NodeTestCase):
         self.assertPosition(names[1], (3, 3), (3, 4), (3, 4))
         self.assertNoBeforeInnerAfter(names[1])
 
-    @only_python36
+    @ge_python36
     def test_formatted_value2(self):
         code = ("#bla\n"
                 "import decimal\n"
@@ -1025,7 +1027,7 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0], (5, 10), (5, 37), (5, 37))
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_formatted_value3(self):
         code = ("#bla\n"
                 "a = 1\n"
@@ -1038,7 +1040,7 @@ class TestExpr(NodeTestCase):
         self.assertNoBeforeInnerAfter(nodes[0])
         self.assertNoBeforeInnerAfter(nodes[1])
 
-    @only_python36
+    @ge_python36
     def test_constant(self):
         code = ("#bla\n"
                 "x = 2\n")
@@ -1057,7 +1059,7 @@ class TestExpr(NodeTestCase):
         self.assertPosition(nodes[0], (2, 4), (2, 5), (2, 5))
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_named_expr(self):
         code = ("#bla\n"
                 "(a := 1)")

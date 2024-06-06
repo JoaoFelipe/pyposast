@@ -6,19 +6,32 @@ from __future__ import (absolute_import, division)
 
 import ast
 
-from .utils import get_nodes, NodeTestCase
-from .utils import only_python2, only_python3, only_python35, only_python36, only_python38
+from .utils import NodeTestCase
+from pyposast import get_nodes
+from pyposast.cross_version import only_python2, only_python3, ge_python35
+from pyposast.cross_version import ge_python36, ge_python38, ge_python39
+from pyposast.cross_version import lt_python39
 
 
 class TestMisc(NodeTestCase):
     # pylint: disable=missing-docstring, too-many-public-methods
 
+    @lt_python39
     def test_index(self):
         code = ("#bla\n"
                 "a[1]")
         nodes = get_nodes(code, ast.Index)
         self.assertPosition(nodes[0], (2, 2), (2, 3), (2, 3))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python39
+    def test_subscript_constant(self):
+        code = ("#bla\n"
+                "a[1]")
+        nodes = get_nodes(code, ast.Constant)
+        self.assertPosition(nodes[0], (2, 2), (2, 3), (2, 3))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
 
     def test_slice(self):
         code = ("#bla\n"
@@ -94,6 +107,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 3), (2, 4), (2, 4), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    @lt_python39
     def test_ext_slice(self):
         code = ("#bla\n"
                 "a[1:2,3]")
@@ -102,6 +116,20 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 5), (2, 6), (2, 6), ',')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    @ge_python39
+    def test_slice9(self):
+        code = ("#bla\n"
+                "a[1:2,3]")
+        nodes = get_nodes(code, ast.Tuple)
+        self.assertPosition(nodes[0], (2, 2), (2, 7), (2, 6))
+        self.assertOperation(nodes[0].op_pos[0], (2, 5), (2, 6), (2, 6), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 5), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @lt_python39
     def test_ext_slice2(self):
         code = ("#bla\n"
                 "a[1:2:,3]")
@@ -110,12 +138,41 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 6), (2, 7), (2, 7), ',')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    @ge_python39
+    def test_slice10(self):
+        code = ("#bla\n"
+                "a[1:2:,3]")
+        nodes = get_nodes(code, ast.Tuple)
+        self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 7))
+        self.assertOperation(nodes[0].op_pos[0], (2, 6), (2, 7), (2, 7), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 6), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ':')
+        self.assertOperation(nodes[0].op_pos[1], (2, 5), (2, 6), (2, 6), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @lt_python39
     def test_ext_slice3(self):
         code = ("#bla\n"
                 "a[3,1:2:]")
         nodes = get_nodes(code, ast.ExtSlice)
         self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 4))
         self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python39
+    def test_slice11(self):
+        code = ("#bla\n"
+                "a[3,1:2:]")
+        nodes = get_nodes(code, ast.Tuple)
+        self.assertPosition(nodes[0], (2, 2), (2, 8), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 4), (2, 8), (2, 6))
+        self.assertOperation(nodes[0].op_pos[0], (2, 5), (2, 6), (2, 6), ':')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_eq(self):
@@ -263,7 +320,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[3], (5, 1), (5, 3), (5, 3), 'if')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python36
+    @ge_python36
     def test_comprehension3(self):
         code = ("async def f():\n"
                 "    [x\n"
@@ -396,7 +453,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[4], (2, 16), (2, 17), (2, 17), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_positional_only(self):
         code = ("#bla\n"
                 "def f(p1, p2, /, p_or_kw, *, kw):\n"
@@ -412,7 +469,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[6], (2, 27), (2, 28), (2, 28), ',')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_positional_only2(self):
         code = ("#bla\n"
                 "def f(p1, p2=None, /, p_or_kw=None, *, kw):\n"
@@ -430,7 +487,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[8], (2, 37), (2, 38), (2, 38), ',')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_positional_only3(self):
         code = ("#bla\n"
                 "def f(p1, p2=None, /, *, kw):\n"
@@ -446,7 +503,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[6], (2, 23), (2, 24), (2, 24), ',')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_positional_only4(self):
         code = ("#bla\n"
                 "def f(p1, p2=None, /):\n"
@@ -459,7 +516,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[3], (2, 19), (2, 20), (2, 20), '/')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_positional_only5(self):
         code = ("#bla\n"
                 "def f(p1, p2, /, p_or_kw):\n"
@@ -472,7 +529,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[3], (2, 15), (2, 16), (2, 16), ',')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python38
+    @ge_python38
     def test_positional_only6(self):
         code = ("#bla\n"
                 "def f(p1, p2, /):\n"
@@ -540,7 +597,7 @@ class TestMisc(NodeTestCase):
         self.assertPosition(op, (2, 2), (2, 3), (2, 3))
         self.assertNoBeforeInnerAfter(op)
 
-    @only_python35
+    @ge_python35
     def test_matmult(self):
         code = ("#bla\n"
                 "a @ a")
@@ -764,7 +821,7 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @only_python35
+    @ge_python35
     def test_keyword3(self):
         code = ("#bla\n"
                 "f(x, a=2, **b, ** c)")
