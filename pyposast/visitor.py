@@ -1228,7 +1228,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             last_so_far = self.prepare_type_params_list(node, node.name_node)
             node.op_pos.append(colon)
 
-        if node.keywords or node.bases:
+        if (only_python3 and node.keywords) or node.bases:
             position = (last_so_far.last_line, last_so_far.last_col)
             first, last = self.parenthesis.find_next(position)
             node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first, '('))
@@ -1491,6 +1491,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             node.first_col = node.col_offset
         if hasattr(node, 'end_col_offset'):
             node.last_col = node.end_col_offset
-        super().visit(node)
+        super(LineProvenanceVisitor, self).visit(node)
         if not hasattr(node, 'uid') and hasattr(node, 'first_line') and hasattr(node, 'first_col'):
             node.uid = (node.first_line, node.first_col)

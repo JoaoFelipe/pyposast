@@ -10,7 +10,7 @@ import ast
 from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
-from pyposast.cross_version import ge_python36, ge_python38, lt_python39
+from pyposast.cross_version import ge_python36, ge_python38, between_python3_and_38
 from pyposast.cross_version import lt_python312, between_python36_and_311
 
 
@@ -852,7 +852,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), '*')
         self.assertNoBeforeInnerAfter(nodes[0])
 
-    @lt_python39
+    @between_python3_and_38
     def test_starred2(self):
         code = ("#bla\n"
                 "a, (* b) = 1, 2, 3")
