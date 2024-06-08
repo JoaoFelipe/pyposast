@@ -11,6 +11,7 @@ from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
 from pyposast.cross_version import ge_python36, ge_python310, ge_python311
+from pyposast.cross_version import ge_python312
 
 
 def nprint(nodes):
@@ -780,11 +781,72 @@ class TestStmt(NodeTestCase):
         self.assertPosition(nodes[0].name_node, (3, 6), (3, 7), (3, 7))
         self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 1), (2, 1), '@')
         self.assertOperation(nodes[0].op_pos[1], (3, 0), (3, 5), (3, 5), 'class')
-        self.assertOperation(nodes[0].op_pos[2], (3, 15), (3, 16), (3, 16), ':')
+        self.assertOperation(nodes[0].op_pos[2], (3, 7), (3, 8), (3, 8), '(')
+        self.assertOperation(nodes[0].op_pos[3], (3, 14), (3, 15), (3, 15), ')')
+        self.assertOperation(nodes[0].op_pos[4], (3, 15), (3, 16), (3, 16), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
         nodes = get_nodes(code, ast.Name)
         self.assertPosition(nodes[0], (3, 8), (3, 14), (3, 14))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_class3(self):
+        code = ("#bla\n"
+                "class a[X]:\n"
+                "    pass")
+        nodes = get_nodes(code, ast.ClassDef)
+        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 5))
+        self.assertPosition(nodes[0].name_node, (2, 6), (2, 7), (2, 7))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'class')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 9), (2, 10), (2, 10), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 10), (2, 11), (2, 11), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 8), (2, 9), (2, 8))
+        self.assertOperation(nodes[0].name_node, (2, 8), (2, 9), (2, 9), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_class4(self):
+        code = ("#bla\n"
+                "@dec1\n"
+                "class a[X](object):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.ClassDef)
+        self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 5))
+        self.assertPosition(nodes[0].name_node, (3, 6), (3, 7), (3, 7))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 1), (2, 1), '@')
+        self.assertOperation(nodes[0].op_pos[1], (3, 0), (3, 5), (3, 5), 'class')
+        self.assertOperation(nodes[0].op_pos[2], (3, 7), (3, 8), (3, 8), '[')
+        self.assertOperation(nodes[0].op_pos[3], (3, 9), (3, 10), (3, 10), ']')
+        self.assertOperation(nodes[0].op_pos[4], (3, 10), (3, 11), (3, 11), '(')
+        self.assertOperation(nodes[0].op_pos[5], (3, 17), (3, 18), (3, 18), ')')
+        self.assertOperation(nodes[0].op_pos[6], (3, 18), (3, 19), (3, 19), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (3, 8), (3, 9), (3, 8))
+        self.assertOperation(nodes[0].name_node, (3, 8), (3, 9), (3, 9), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.Name)
+        self.assertPosition(nodes[0], (3, 11), (3, 17), (3, 17))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @only_python3
+    def test_class5(self):
+        code = ("#bla\n"
+                "@dec1\n"
+                "class a(x, y, metaclass=z):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.ClassDef)
+        self.assertPosition(nodes[0], (2, 0), (4, 8), (3, 5))
+        self.assertPosition(nodes[0].name_node, (3, 6), (3, 7), (3, 7))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 1), (2, 1), '@')
+        self.assertOperation(nodes[0].op_pos[1], (3, 0), (3, 5), (3, 5), 'class')
+        self.assertOperation(nodes[0].op_pos[2], (3, 7), (3, 8), (3, 8), '(')
+        self.assertOperation(nodes[0].op_pos[3], (3, 25), (3, 26), (3, 26), ')')
+        self.assertOperation(nodes[0].op_pos[4], (3, 26), (3, 27), (3, 27), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_function_def(self):
@@ -857,8 +919,28 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[1].op_pos[4], (5, 7), (5, 8), (5, 8), ':')
         self.assertNoBeforeInnerAfter(nodes[1])
 
+    @ge_python312
+    def test_function_def5(self):
+        code = ("#bla\n"
+                "def f[X](x, y=2, *z, **w):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.FunctionDef)
+        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 3))
+        self.assertPosition(nodes[0].name_node, (2, 4), (2, 5), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 3), (2, 3), 'def')
+        self.assertOperation(nodes[0].op_pos[1], (2, 5), (2, 6), (2, 6), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 7), (2, 8), (2, 8), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 8), (2, 9), (2, 9), '(')
+        self.assertOperation(nodes[0].op_pos[4], (2, 24), (2, 25), (2, 25), ')')
+        self.assertOperation(nodes[0].op_pos[5], (2, 25), (2, 26), (2, 26), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 6), (2, 7), (2, 6))
+        self.assertOperation(nodes[0].name_node, (2, 6), (2, 7), (2, 7), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     @ge_python35
-    def test_async_function_def(self):
+    def test_async_function_def1(self):
         code = ("#bla\n"
                 "async def f(x, y=2, *z, **w):\n"
                 "    pass")
@@ -869,6 +951,26 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12), '(')
         self.assertOperation(nodes[0].op_pos[2], (2, 27), (2, 28), (2, 28), ')')
         self.assertOperation(nodes[0].op_pos[3], (2, 28), (2, 29), (2, 29), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_async_function_def2(self):
+        code = ("#bla\n"
+                "async def f[X](x, y=2, *z, **w):\n"
+                "    pass")
+        nodes = get_nodes(code, ast.AsyncFunctionDef)
+        self.assertPosition(nodes[0], (2, 0), (3, 8), (2, 9))
+        self.assertPosition(nodes[0].name_node, (2, 10), (2, 11), (2, 11))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 9), (2, 9), 'async def')
+        self.assertOperation(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 13), (2, 14), (2, 14), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 14), (2, 15), (2, 15), '(')
+        self.assertOperation(nodes[0].op_pos[4], (2, 30), (2, 31), (2, 31), ')')
+        self.assertOperation(nodes[0].op_pos[5], (2, 31), (2, 32), (2, 32), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 12), (2, 13), (2, 12))
+        self.assertOperation(nodes[0].name_node, (2, 12), (2, 13), (2, 13), '<name>')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @ge_python310
@@ -1191,3 +1293,101 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (3, 10), (3, 11), (3, 11), '|')
         self.assertOperation(nodes[0].op_pos[1], (3, 12), (3, 13), (3, 13), '|')
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_type_alias(self):
+        code = ("#bla\n"
+                "type x = str")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 12), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_type_alias_type_var1(self):
+        code = ("#bla\n"
+                "type Alias[X] = list[X]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 23), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 12), (2, 13), (2, 13), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 14), (2, 15), (2, 15), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 11), (2, 12), (2, 11))
+        self.assertOperation(nodes[0].name_node, (2, 11), (2, 12), (2, 12), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_type_alias_type_var2(self):
+        code = ("#bla\n"
+                "type Alias[X,Y] = list[X,Y]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 27), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 12), (2, 13), (2, 13), ',')
+        self.assertOperation(nodes[0].op_pos[3], (2, 14), (2, 15), (2, 15), ']')
+        self.assertOperation(nodes[0].op_pos[4], (2, 16), (2, 17), (2, 17), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 11), (2, 12), (2, 11))
+        self.assertOperation(nodes[0].name_node, (2, 11), (2, 12), (2, 12), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        self.assertPosition(nodes[1], (2, 13), (2, 14), (2, 13))
+        self.assertOperation(nodes[1].name_node, (2, 13), (2, 14), (2, 14), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[1])
+
+    @ge_python312
+    def test_type_alias_type_var3(self):
+        code = ("#bla\n"
+                "type Alias[X: int] = list[X]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 28), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 17), (2, 18), (2, 18), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 19), (2, 20), (2, 20), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 11), (2, 17), (2, 11))
+        self.assertOperation(nodes[0].name_node, (2, 11), (2, 12), (2, 12), '<name>')
+        self.assertOperation(nodes[0].op_pos[0], (2, 12), (2, 13), (2, 13), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_type_alias_param_spec(self):
+        code = ("#bla\n"
+                "type Alias[**P] = Callable[P, int]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 34), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 14), (2, 15), (2, 15), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 16), (2, 17), (2, 17), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.ParamSpec)
+        self.assertPosition(nodes[0], (2, 11), (2, 14), (2, 13))
+        self.assertOperation(nodes[0].name_node, (2, 13), (2, 14), (2, 14), '<name>')
+        self.assertOperation(nodes[0].op_pos[0], (2, 11), (2, 13), (2, 13), '**')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python312
+    def test_type_alias_type_var_tuple(self):
+        code = ("#bla\n"
+                "type Alias[*Ts] = tuple[*Ts]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 28), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 14), (2, 15), (2, 15), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 16), (2, 17), (2, 17), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVarTuple)
+        self.assertPosition(nodes[0], (2, 11), (2, 14), (2, 12))
+        self.assertOperation(nodes[0].name_node, (2, 12), (2, 14), (2, 14), '<name>')
+        self.assertOperation(nodes[0].op_pos[0], (2, 11), (2, 12), (2, 12), '*')
+        self.assertNoBeforeInnerAfter(nodes[0])
+

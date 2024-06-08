@@ -10,7 +10,9 @@ import sys
 WHITESPACE = ('\\', '\r', ' ', '\t')
 KEYWORDS = ['and', 'or', 'for', 'if', 'lambda', 'None', 'global', 'import',
             'assert', 'try', 'except', 'raise', 'with', 'while', 'del',
-            'return', 'class', 'def', 'else', 'finally', 'as', 'match', 'case']
+            'return', 'class', 'def', 'else', 'finally', 'as', 'match', 'case',
+            'type'
+           ]
 SEMI_KEYWORDS = []
 COMBINED_KEYWORDS = ['is not',  'not in', 'async for', 'async with', 'async def']
 FUTURE_KEYWORDS = ['is', 'not', 'for', 'with', 'def']
@@ -73,6 +75,8 @@ if sys.version_info >= (3, 5):
 if sys.version_info >= (3, 6):
     OPERATORS[ast.AnnAssign] = (':', '=')
 
-
 if sys.version_info >= (3, 8):
     OPERATORS[ast.NamedExpr] = ((':='),)
+
+if sys.version_info >= (3, 12):
+    OPERATORS[ast.TypeAlias] = (('='),)

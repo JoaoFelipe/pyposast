@@ -13,7 +13,7 @@ from functools import wraps
 
 from .cross_version import only_python2, only_python3, native_decode_source
 from .cross_version import ge_python36, ge_python37, ge_python38, lt_python39
-from .cross_version import ge_python39
+from .cross_version import ge_python39, ge_python312
 from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
@@ -1206,8 +1206,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @visit_stmt
     def visit_ClassDef(self, node):
+        lineno, col_offset = node.lineno, node.col_offset
+        for dec in node.decorator_list:
+            node.lineno = max(node.lineno, dec.last_line + 1)
         start_by_keyword(node, self.operators['class'], self.bytes_pos_to_utf8)
+        first = node.first_line, node.first_col
         self.uid_something_colon(node, 'class')
+
         for dec in node.decorator_list:
             min_first_max_last(node, dec)
             self.adjust_decorator(node, dec)
@@ -1216,7 +1221,18 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
         position = (node.first_line, node.first_col)
         last, first = self.names[node.name].find_next(position)
-        node.name_node = NodeWithPosition(last, first, '<name>')
+        last_so_far = node.name_node = NodeWithPosition(last, first, '<name>')
+
+        if ge_python312 and node.type_params:
+            colon = node.op_pos.pop()
+            last_so_far = self.prepare_type_params_list(node, node.name_node)
+            node.op_pos.append(colon)
+
+        if node.keywords or node.bases:
+            position = (last_so_far.last_line, last_so_far.last_col)
+            first, last = self.parenthesis.find_next(position)
+            node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first, '('))
+            node.op_pos.insert(-1, NodeWithPosition(last, dec_tuple(last), ')'))
 
         len_keywords = len(getattr(node, "keywords", []))
         if len(node.bases) == 1 and len_keywords == 0:
@@ -1256,8 +1272,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
         last, first = self.names[node.name].find_next(first)
         node.name_node = NodeWithPosition(last, first, '<name>')
+        last_so_far = node.name_node
 
-        first, last = self.parenthesis.find_next(first)
+        if ge_python312 and node.type_params:
+            colon = node.op_pos.pop()
+            last_so_far = self.prepare_type_params_list(node, node.name_node)
+            node.op_pos.append(colon)
+        position = (last_so_far.last_line, last_so_far.last_col)
+        first, last = self.parenthesis.find_next(position)
         node.op_pos.insert(-1, NodeWithPosition(inc_tuple(first), first, '('))
         node.op_pos.insert(-1, NodeWithPosition(last, dec_tuple(last), ')'))
 
@@ -1412,6 +1434,53 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             first, last = find_next_pipe(self.lcode, position)
             if first:
                 node.op_pos.append(NodeWithPosition(last, first, '|'))
+
+    def prepare_type_params_list(self, node, previous):
+        if node.type_params:
+            position = (previous.last_line, previous.last_col)
+            first, last = self.sbrackets.find_next(position)
+            node.op_pos.append(NodeWithPosition(inc_tuple(first), first, '['))
+            self.comma_separated_list(node, node.type_params)
+            node.op_pos.append(NodeWithPosition(last, dec_tuple(last), ']'))
+            return node.type_params[-1]
+        return previous
+
+    @visit_stmt
+    def visit_TypeAlias(self, node):
+        start_by_keyword(node, self.operators['type'], self.bytes_pos_to_utf8, inclusive=True, set_last=False)
+        node.op_pos = [
+            NodeWithPosition(node.uid, (node.first_line, node.first_col), 'type')
+        ]
+        last_so_far = self.prepare_type_params_list(node, node.name)
+        node.op_pos.append(self.calculate_infixop(node, last_so_far, node.value))
+
+    @visit_all
+    def visit_TypeVar(self, node):
+        node.op_pos = []
+        last, first = self.names[node.name].find_next((node.first_line, node.first_col))
+        node.name_node = NodeWithPosition(last, first, '<name>')
+        position = (node.name_node.last_line, node.name_node.last_col)
+        if node.bound:
+            last, first = self.operators[':'].find_next(position)
+            node.op_pos.append(NodeWithPosition(last, first, ':'))
+
+    @visit_all
+    def visit_ParamSpec(self, node):
+        position = (node.first_line, node.first_col)
+        last, first = self.operators['**'].find_next(position)
+        node.op_pos = [NodeWithPosition(last, first, '**')]
+        node.uid = last
+        last, first = self.names[node.name].find_next(last)
+        node.name_node = NodeWithPosition(last, first, '<name>')
+
+    @visit_all
+    def visit_TypeVarTuple(self, node):
+        position = (node.first_line, node.first_col)
+        last, first = self.operators['*'].find_next(position)
+        node.op_pos = [NodeWithPosition(last, first, '*')]
+        node.uid = last
+        last, first = self.names[node.name].find_next(last)
+        node.name_node = NodeWithPosition(last, first, '<name>')
 
     def visit(self, node):
         if hasattr(node, 'lineno'):
