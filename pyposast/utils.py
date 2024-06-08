@@ -151,6 +151,10 @@ def find_next_equal(code, position):
     """Find next equal sign and return its first and last positions"""
     return find_next_character(code, position, '=')
 
+def find_next_pipe(code, position):
+    """Find next comman and return its first and last positions"""
+    return find_next_character(code, position, '|')
+
 def extract_positions(utf8):
     j = 0
     utf8_pos_to_bytes = {}

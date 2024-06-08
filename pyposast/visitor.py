@@ -18,7 +18,7 @@ from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
                     find_next_parenthesis, find_next_comma, extract_positions,
-                    find_next_colon, find_next_equal)
+                    find_next_colon, find_next_equal, find_next_pipe)
 from .node_helpers import (NodeWithPosition, nprint, copy_info, ast_pos,
                            copy_from_lineno_col_offset, set_pos,
                            r_set_pos, min_first_max_last, set_max_position,
@@ -76,6 +76,12 @@ def visit_expr(fn):
         update_expr_parenthesis(self.lcode, self.parenthesis, node)
         return result
     return decorator
+
+
+def visit_all_if_condition_else_expr(condition):
+    if condition:
+        return visit_all
+    return visit_expr
 
 
 visit_stmt = visit_all
@@ -164,12 +170,12 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         (last, first), ch = min(possible, key=lambda x: tuple(map(sub, position, x[0][0])))
         return NodeWithPosition(last, first, ch)
 
-    def uid_something_colon(self, node, something, inclusive=False):
+    def uid_something_colon(self, node, something, inclusive=False, first_child=lambda n: n.body[0]):
         """ Creates op_pos for node from uid to colon """
         node.op_pos = [
             NodeWithPosition(node.uid, (node.first_line, node.first_col), something)
         ]
-        position = (node.body[0].first_line, node.body[0].first_col)
+        position = (first_child(node).first_line, first_child(node).first_col)
         last, first = self.operators[':'].find_previous(position, inclusive=inclusive)
         node.op_pos.append(NodeWithPosition(last, first, ':'))
         return last
@@ -284,7 +290,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = self.dposition(node)
             r_set_pos(node, *self.operators['...'].find_next(position))
 
-    @(visit_all if lt_python39 else visit_expr)
+    @visit_all_if_condition_else_expr(lt_python39)
     def visit_Slice(self, node):
         set_max_position(node)
         children = [node.lower, node.upper, node.step]
@@ -424,22 +430,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             NodeWithPosition(node.uid, (node.last_line, node.last_col - 1), '`'),
         ]
 
-    @visit_expr
-    def visit_Call(self, node):
+    def visit_call_like(self, node, children, func=lambda x: x.func):
         node.op_pos = []
-        copy_info(node, node.func)
+        copy_info(node, func(node))
         position = (node.last_line, node.last_col)
         first, last = self.parenthesis.find_next(position)
         node.op_pos.append(NodeWithPosition(inc_tuple(first), first, '('))
         node.uid = node.last_line, node.last_col = last
-        children = []
-        if hasattr(node, 'starargs'):  # Python <= 3.4
-            children += [['starargs', node.starargs], ['kwargs', node.kwargs]]
-        children += [['args', x] for x in node.args]
-        children += [['keywords', x] for x in node.keywords]
-        children = [x for x in children if x[1] is not None]
-        if len(children) == 1 and isinstance(children[0][1], ast.expr):
-            increment_node_position(self.lcode, children[0][1])
 
         for child in children:
             position = (child[1].last_line, child[1].last_col)
@@ -457,6 +454,20 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.arg_order = children
 
         node.op_pos.append(NodeWithPosition(last, dec_tuple(last), ')'))
+
+
+
+    @visit_expr
+    def visit_Call(self, node):
+        children = []
+        if hasattr(node, 'starargs'):  # Python <= 3.4
+            children += [['starargs', node.starargs], ['kwargs', node.kwargs]]
+        children += [['args', x] for x in node.args]
+        children += [['keywords', x] for x in node.keywords]
+        children = [x for x in children if x[1] is not None]
+        if len(children) == 1 and isinstance(children[0][1], ast.expr):
+            increment_node_position(self.lcode, children[0][1])
+        self.visit_call_like(node, children)
 
     @visit_expr
     def visit_Compare(self, node):
@@ -540,12 +551,11 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.op_pos = []
         self.comma_separated_list(node, node.elts)
 
-    @visit_expr
-    def visit_Dict(self, node):
+    def visit_dict_like(self, node, keys=lambda x: x.keys, values=lambda x: x.values):
         node.op_pos = []
         position = self.dposition(node, dcol=1)
         set_pos(node, *self.brackets.find_previous(position))
-        for key, value in zip(node.keys, node.values):
+        for key, value in zip(keys(node), values(node)):
             position = (key.last_line, key.last_col)
             first, last = find_next_colon(self.lcode, position)
             node.op_pos.append(NodeWithPosition(last, first, ':'))
@@ -554,6 +564,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             first, last = find_next_comma(self.lcode, position)
             if first:  # comma exists
                 node.op_pos.append(NodeWithPosition(last, first, ','))
+
+    @visit_expr
+    def visit_Dict(self, node):
+        self.visit_dict_like(node)
 
     @visit_expr
     def visit_IfExp(self, node):
@@ -1289,3 +1303,118 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     @visit_mod
     def visit_Expression(self, node):
         copy_info(node, node.body)
+
+    @visit_stmt
+    def visit_Match(self, node):
+
+        #for case in node.cases:
+        #    self.visit_match_case(case)
+        start_by_keyword(node, self.operators['match'], self.bytes_pos_to_utf8, inclusive=True, set_last=False)
+        last = self.uid_something_colon(node, 'match', first_child=lambda n: n.cases[0])
+
+    @visit_all
+    def visit_match_case(self, node):
+        set_max_position(node)
+        min_first_max_last(node, node.pattern)
+        if node.guard is not None:
+            min_first_max_last(node, node.guard)
+        for stmt in node.body:
+            min_first_max_last(node, stmt)
+        node.lineno, node.col_offset = node.first_line, node.first_col
+        start_by_keyword(node, self.operators['case'], self.bytes_pos_to_utf8, inclusive=True, set_last=False)
+        self.uid_something_colon(node, 'case')
+        if node.guard:
+            last, first = self.operators['if'].find_previous(
+                (node.op_pos[-1].last_line, node.op_pos[-1].last_col)
+            )
+            node.op_pos.insert(-1, NodeWithPosition(last, first, 'if'))
+
+    # def visit_MatchValue(self, node):
+    # def visit_MatchSingleton(self, node):
+
+    @visit_all
+    def visit_MatchSequence(self, node):
+        node.op_pos = []
+        for pattern in node.patterns:
+            position = (pattern.last_line, pattern.last_col)
+            first, last = find_next_comma(self.lcode, position)
+            if first:
+                node.op_pos.append(NodeWithPosition(last, first, ','))
+
+    @visit_all
+    def visit_MatchMapping(self, node):
+        self.visit_dict_like(node, values=lambda x: x.patterns)
+        node_position = (node.first_line, node.first_col)
+        #node_position = (node.patterns[-1].first_line, node.patterns[-1].first_col)
+        if node.rest:
+            uid, first = self.operators['**'].find_next(node_position)
+            node.rest_node = NodeWithPosition(uid, first, '<rest>')
+            node.rest_node.op_pos = [
+                NodeWithPosition(uid, first, '**')
+            ]
+            last, _ = self.names[node.rest].find_next(first)
+            node.rest_node.last_line, node.rest_node.last_col = last
+        else:
+            node.rest_node = None
+
+    @visit_all
+    def visit_MatchClass(self, node):
+        children = []
+        children += [['patterns', x] for x in node.patterns]
+        for attr, pattern_node in zip(node.kwd_attrs, node.kwd_patterns):
+            last, first = self.names[attr].find_previous(
+                (pattern_node.first_line, pattern_node.first_col)
+            )
+            attr_node = NodeWithPosition(last, first, '<kwd_attr>')
+            last, first = self.operators['='].find_next(last)
+            attr_node.op_pos = [
+                NodeWithPosition(last, first, '=')
+            ]
+            children.append(['kwd_attrs', attr_node])
+            children.append(['kwd_patterns', pattern_node])
+        self.visit_call_like(node, children, func=lambda x: x.cls)
+
+    @visit_all
+    def visit_MatchStar(self, node):
+        first = (node.first_line, node.first_col)
+        node.op_pos = [NodeWithPosition(inc_tuple(first), first, '*')]
+        last, first = self.names[node.name or '_'].find_next(first)
+        node.name_node = NodeWithPosition(last, first, '<name>')
+
+    @visit_all
+    def visit_MatchAs(self, node):
+        last = (node.last_line, node.last_col)
+        first = (node.first_line, node.first_col)
+        if node.pattern is None:
+            node.name_node = NodeWithPosition(last, first, '<name>')
+        else:
+            last, first = self.operators["as"].find_previous(last)
+            node.op_pos = [NodeWithPosition(last, first, 'as')]
+            if node.name:
+                last, first = self.names[node.name].find_next(last)
+                node.name_node = NodeWithPosition(last, first, '<name>')
+
+    @visit_all
+    def visit_MatchOr(self, node):
+        node.op_pos = []
+        first = node.patterns[0]
+        position = (first.last_line, first.last_col)
+        last, node.uid = self.operators['|'].find_next(position)
+        for pattern in node.patterns:
+            position = (pattern.last_line, pattern.last_col)
+            first, last = find_next_pipe(self.lcode, position)
+            if first:
+                node.op_pos.append(NodeWithPosition(last, first, '|'))
+
+    def visit(self, node):
+        if hasattr(node, 'lineno'):
+            node.first_line = node.lineno
+        if hasattr(node, 'end_lineno'):
+            node.last_line = node.end_lineno
+        if hasattr(node, 'col_offset'):
+            node.first_col = node.col_offset
+        if hasattr(node, 'end_col_offset'):
+            node.last_col = node.end_col_offset
+        super().visit(node)
+        if not hasattr(node, 'uid') and hasattr(node, 'first_line') and hasattr(node, 'first_col'):
+            node.uid = (node.first_line, node.first_col)

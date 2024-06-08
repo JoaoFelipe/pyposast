@@ -47,6 +47,7 @@ ge_python37 = SelectVersion(lambda x: x >= (3, 7))
 ge_python38 = SelectVersion(lambda x: x >= (3, 8))
 ge_python39 = SelectVersion(lambda x: x >= (3, 9))
 lt_python39 = SelectVersion(lambda x: x < (3, 9))
+ge_python310 = SelectVersion(lambda x: x >= (3, 10))
 
 if only_python3:
     from tokenize import detect_encoding

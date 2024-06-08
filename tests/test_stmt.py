@@ -10,7 +10,7 @@ import sys
 from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
-from pyposast.cross_version import ge_python36
+from pyposast.cross_version import ge_python36, ge_python310
 
 
 def nprint(nodes):
@@ -857,4 +857,325 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 11), (2, 12), (2, 12), '(')
         self.assertOperation(nodes[0].op_pos[2], (2, 27), (2, 28), (2, 28), ')')
         self.assertOperation(nodes[0].op_pos[3], (2, 28), (2, 29), (2, 29), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_value(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case 1:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 10), (3, 11), (3, 11), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchValue)
+        self.assertPosition(nodes[0], (3, 9), (3, 10), (3, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_case_with_guard(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case 1 if 2:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 11), (3, 13), (3, 13), 'if')
+        self.assertOperation(nodes[0].op_pos[2], (3, 15), (3, 16), (3, 16), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchValue)
+        self.assertPosition(nodes[0], (3, 9), (3, 10), (3, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_singleton(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case True:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 13), (3, 14), (3, 14), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchSingleton)
+        self.assertPosition(nodes[0], (3, 9), (3, 13), (3, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_sequence(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case [2, 1]:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 15), (3, 16), (3, 16), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchSequence)
+        self.assertPosition(nodes[0], (3, 9), (3, 15), (3, 9))
+        self.assertOperation(nodes[0].op_pos[0], (3, 11), (3, 12), (3, 12), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchValue)
+        self.assertPosition(nodes[0], (3, 10), (3, 11), (3, 10))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        self.assertPosition(nodes[1], (3, 13), (3, 14), (3, 13))
+        self.assertNoBeforeInnerAfter(nodes[1])
+
+    @ge_python310
+    def test_match_mapping(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case {'text': 1, **rest}:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 28), (3, 29), (3, 29), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchMapping)
+        self.assertPosition(nodes[0], (3, 9), (3, 28), (3, 28))
+        self.assertOperation(nodes[0].op_pos[0], (3, 16), (3, 17), (3, 17), ':')
+        self.assertOperation(nodes[0].op_pos[1], (3, 19), (3, 20), (3, 20), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        self.assertPosition(nodes[0].rest_node, (3, 21), (3, 27), (3, 23))
+
+    @ge_python310
+    def test_match_class(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case Point(0, 1, pos=2):\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 27), (3, 28), (3, 28), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchClass)
+        self.assertPosition(nodes[0], (3, 9), (3, 27), (3, 27))
+        self.assertOperation(nodes[0].op_pos[0], (3, 14), (3, 15), (3, 15), '(')
+        self.assertOperation(nodes[0].op_pos[1], (3, 16), (3, 17), (3, 17), ',')
+        self.assertOperation(nodes[0].op_pos[2], (3, 19), (3, 20), (3, 20), ',')
+        self.assertOperation(nodes[0].op_pos[3], (3, 26), (3, 27), (3, 27), ')')
+        self.assertOperation(nodes[0].arg_order[2][1].op_pos[0], (3, 24), (3, 25), (3, 25), '=')
+
+    @ge_python310
+    def test_match_star1(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case [2, *_]:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 16), (3, 17), (3, 17), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchSequence)
+        self.assertPosition(nodes[0], (3, 9), (3, 16), (3, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchValue)
+        self.assertPosition(nodes[0], (3, 10), (3, 11), (3, 10))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchStar)
+        self.assertPosition(nodes[0], (3, 13), (3, 15), (3, 13))
+        self.assertOperation(nodes[0].op_pos[0], (3, 13), (3, 14), (3, 14), '*')
+        self.assertOperation(nodes[0].name_node, (3, 14), (3, 15), (3, 15), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_star2(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case [2, *x]:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 16), (3, 17), (3, 17), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchSequence)
+        self.assertPosition(nodes[0], (3, 9), (3, 16), (3, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchValue)
+        self.assertPosition(nodes[0], (3, 10), (3, 11), (3, 10))
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchStar)
+        self.assertPosition(nodes[0], (3, 13), (3, 15), (3, 13))
+        self.assertOperation(nodes[0].op_pos[0], (3, 13), (3, 14), (3, 14), '*')
+        self.assertOperation(nodes[0].name_node, (3, 14), (3, 15), (3, 15), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_as1(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case y:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 10), (3, 11), (3, 11), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchAs)
+        self.assertPosition(nodes[0], (3, 9), (3, 10), (3, 9))
+        self.assertOperation(nodes[0].name_node, (3, 9), (3, 10), (3, 10), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_as2(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case _:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 10), (3, 11), (3, 11), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchAs)
+        self.assertPosition(nodes[0], (3, 9), (3, 10), (3, 9))
+        self.assertOperation(nodes[0].name_node, (3, 9), (3, 10), (3, 10), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+
+    @ge_python310
+    def test_match_as3(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case 1 as y:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 15), (3, 16), (3, 16), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchAs)
+        self.assertPosition(nodes[0], (3, 9), (3, 15), (3, 9))
+        self.assertOperation(nodes[0].op_pos[0], (3, 11), (3, 13), (3, 13), 'as')
+        self.assertOperation(nodes[0].name_node, (3, 14), (3, 15), (3, 15), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_as4(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case _ as y:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 15), (3, 16), (3, 16), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchAs)
+        self.assertPosition(nodes[0], (3, 9), (3, 15), (3, 9))
+        self.assertOperation(nodes[0].op_pos[0], (3, 11), (3, 13), (3, 13), 'as')
+        self.assertOperation(nodes[0].name_node, (3, 14), (3, 15), (3, 15), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_as5(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case z as y:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 15), (3, 16), (3, 16), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchAs)
+        self.assertPosition(nodes[0], (3, 9), (3, 15), (3, 9))
+        self.assertOperation(nodes[0].op_pos[0], (3, 11), (3, 13), (3, 13), 'as')
+        self.assertOperation(nodes[0].name_node, (3, 14), (3, 15), (3, 15), '<name>')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python310
+    def test_match_or(self):
+        code = ("#bla\n"
+                "match x:\n"
+                "    case 1|2|3:\n"
+                "        pass")
+        nodes = get_nodes(code, ast.Match)
+        self.assertPosition(nodes[0], (2, 0), (4, 12), (2, 5))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 5), (2, 5), 'match')
+        self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.match_case)
+        self.assertPosition(nodes[0], (3, 4), (4, 12), (3, 8))
+        self.assertOperation(nodes[0].op_pos[0], (3, 4), (3, 8), (3, 8), 'case')
+        self.assertOperation(nodes[0].op_pos[1], (3, 14), (3, 15), (3, 15), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.MatchOr)
+        self.assertPosition(nodes[0], (3, 9), (3, 14), (3, 10))
+        self.assertOperation(nodes[0].op_pos[0], (3, 10), (3, 11), (3, 11), '|')
+        self.assertOperation(nodes[0].op_pos[1], (3, 12), (3, 13), (3, 13), '|')
         self.assertNoBeforeInnerAfter(nodes[0])
