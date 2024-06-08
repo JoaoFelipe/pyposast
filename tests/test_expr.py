@@ -266,6 +266,16 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 13), (2, 14), (2, 14), ']')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    def test_subscript6(self):
+        code = ("#bla\n"
+                "a[\n"
+                "1,2]")
+        nodes = get_nodes(code, ast.Subscript)
+        self.assertPosition(nodes[0], (2, 0), (3, 4), (3, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 1), (2, 2), (2, 2), '[')
+        self.assertOperation(nodes[0].op_pos[1], (3, 3), (3, 4), (3, 4), ']')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     def test_tuple(self):
         code = ("#bla\n"
                 "(\n"

@@ -350,14 +350,19 @@ class LineProvenanceVisitor(ast.NodeVisitor):
     def post_process_slice(self, previous, position):
         if lt_python39:
             ext_slice = ast.ExtSlice
+            may_have_leading_colon = isinstance(previous, ast.ExtSlice)
         else:
             ext_slice = ast.Tuple
+            may_have_leading_colon = (
+                isinstance(previous, ast.Tuple)
+                and isinstance(previous.dims[-1], ast.Slice)
+            )
 
         if isinstance(previous, ext_slice):
             self.post_process_slice(previous.dims[-1], position)
             previous.op_pos = []
             self.comma_separated_list(previous, previous.dims)
-        if isinstance(previous, (ast.Slice, ext_slice)):
+        if isinstance(previous, ast.Slice) or may_have_leading_colon:
             new_position = self.operators[':'].find_previous(position)[0]
             if new_position > (previous.last_line, previous.last_col):
                 previous.last_line, previous.last_col = new_position
