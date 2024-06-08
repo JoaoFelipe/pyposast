@@ -9,7 +9,7 @@ import tokenize
 
 from collections import OrderedDict, defaultdict
 
-from .cross_version import StringIO
+from .cross_version import StringIO, ge_python312
 from .constants import (KEYWORDS, COMBINED_KEYWORDS, SEMI_KEYWORDS,
                         FUTURE_KEYWORDS, PAST_KEYWORKDS)
 
@@ -86,6 +86,8 @@ class TokenCollector(object):
         dots = 0 # number of dots
         first_dot = None
 
+        fstring_stack = [[None, []]]
+
         f = StringIO(code)
         for tok in tokenize.generate_tokens(f.readline):
             self.tokens.append(tok)
@@ -95,6 +97,7 @@ class TokenCollector(object):
             t_erow_ecol = apply_delta(t_erow_ecol, dline, doffset)
             tok = [t_type, t_string, t_srow_scol, t_erow_ecol, t_line]
             tok.append(False) # Should wait the next step
+            fstring_stack[-1][1].append(t_string)
             if t_type == tokenize.OP:
                 for stack in self.stacks:
                     stack.check(t_string, t_srow_scol, t_erow_ecol)
@@ -108,7 +111,7 @@ class TokenCollector(object):
                         first_dot = None
                 self.operators[t_string][t_erow_ecol] = t_srow_scol
             elif t_type == tokenize.STRING:
-                if t_string.startswith('f'): # Python 3.6
+                if t_string.startswith('f'): # Python 3.6 <= x < 3.12
                     inner = t_string[2:-1]
                     stack = []
                     for index, char in enumerate(inner):
@@ -135,6 +138,13 @@ class TokenCollector(object):
                     start = self.strings[last[3]]
                     del self.strings[last[3]]
                 self.strings[t_erow_ecol] = start
+            elif ge_python312 and t_type == tokenize.FSTRING_START:
+                fstring_stack.append([t_srow_scol, [t_string]])
+            elif ge_python312 and t_type == tokenize.FSTRING_END:
+                start, parts = fstring_stack.pop()
+                self.strings[t_erow_ecol] = start
+                fstring_stack[-1][1].pop()
+                fstring_stack[-1][1].append(''.join(parts))
             elif t_type == tokenize.NUMBER:
                 self.numbers[t_erow_ecol] = t_srow_scol
             elif t_type == tokenize.NAME and t_string == 'elif':

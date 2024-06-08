@@ -8,7 +8,7 @@ import ast
 
 from .utils import NodeTestCase
 from pyposast import get_nodes
-from pyposast.cross_version import ge_python38
+from pyposast.cross_version import ge_python38, lt_python312
 
 
 class TestMod(NodeTestCase):
@@ -46,5 +46,14 @@ class TestMod(NodeTestCase):
                 "    # type: ignore x\n"
                 "    pass")
         nodes = get_nodes(code, ast.TypeIgnore, type_comments=True)
-        self.assertPosition(nodes[0], (1, 2), (1, 14), (1, 14))
-        self.assertPosition(nodes[1], (3, 6), (3, 20), (3, 20))
+        # Python 3.12 started to consider everything after # as part of the
+        # type comment
+        if lt_python312:
+            first_start = (1, 2)
+            second_start = (3, 6)
+        else:
+            first_start = (1, 1)
+            second_start = (3, 5)
+
+        self.assertPosition(nodes[0], first_start, (1, 14), (1, 14))
+        self.assertPosition(nodes[1], second_start, (3, 20), (3, 20))

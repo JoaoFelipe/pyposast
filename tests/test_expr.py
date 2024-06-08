@@ -11,6 +11,7 @@ from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
 from pyposast.cross_version import ge_python36, ge_python38, lt_python39
+from pyposast.cross_version import lt_python312, between_python36_and_311
 
 
 def nprint(nodes):
@@ -61,7 +62,7 @@ class TestExpr(NodeTestCase):
     def test_num(self):
         code = ("#bla\n"
                 "12")
-        nodes = get_nodes(code, ast.Num)
+        nodes = get_nodes(code, ast.Num if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 2), (2, 2))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -70,7 +71,7 @@ class TestExpr(NodeTestCase):
         """ Python 3 Num uses the minus as unaryop, USub """
         code = ("#bla\n"
                 "-  1245")
-        nodes = get_nodes(code, ast.Num)
+        nodes = get_nodes(code, ast.Num if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 7), (2, 7))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -79,28 +80,28 @@ class TestExpr(NodeTestCase):
         """ Python 3 Num uses the minus as unaryop, USub """
         code = ("#bla\n"
                 "-  0")
-        nodes = get_nodes(code, ast.Num)
+        nodes = get_nodes(code, ast.Num if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 4), (2, 4))
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_num4(self):
         code = ("#bla\n"
                 "0x1245")
-        nodes = get_nodes(code, ast.Num)
+        nodes = get_nodes(code, ast.Num if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 6))
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_num5(self):
         code = ("#bla\n"
                 "(2)")
-        nodes = get_nodes(code, ast.Num)
+        nodes = get_nodes(code, ast.Num if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 3), (2, 3))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 2))
 
     def test_num6(self):
         code = ("#bla\n"
                 "f(2)")
-        nodes = get_nodes(code, ast.Num)
+        nodes = get_nodes(code, ast.Num if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 2), (2, 3), (2, 3))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -109,14 +110,14 @@ class TestExpr(NodeTestCase):
                 "'ab\\\n"
                 " cd\\\n"
                 " ef'")
-        nodes = get_nodes(code, ast.Str)
+        nodes = get_nodes(code, ast.Str if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (4, 4), (4, 4))
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_str2(self):
         code = ("#bla\n"
                 "'abcd'")
-        nodes = get_nodes(code, ast.Str)
+        nodes = get_nodes(code, ast.Str if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 6))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -125,14 +126,14 @@ class TestExpr(NodeTestCase):
                 "('ab'\\\n"
                 " 'cd'\n"
                 " 'ef')")
-        nodes = get_nodes(code, ast.Str)
+        nodes = get_nodes(code, ast.Str if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (4, 6), (4, 6))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (4, 5))
 
     def test_str4(self):
         code = ("#bla\n"
                 "'ab' 'cd' 'ef'")
-        nodes = get_nodes(code, ast.Str)
+        nodes = get_nodes(code, ast.Str if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 14), (2, 14))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -192,7 +193,7 @@ class TestExpr(NodeTestCase):
     def test_ellipsis(self):
         code = ("#bla\n"
                 "a[...]")
-        nodes = get_nodes(code, ast.Ellipsis)
+        nodes = get_nodes(code, ast.Ellipsis if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 2), (2, 5), (2, 5))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -202,7 +203,7 @@ class TestExpr(NodeTestCase):
         code = ("#bla\n"
                 "a[.\\\n"
                 "..]")
-        nodes = get_nodes(code, ast.Ellipsis)
+        nodes = get_nodes(code, ast.Ellipsis if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 2), (3, 2), (3, 2))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -211,7 +212,7 @@ class TestExpr(NodeTestCase):
         """ Invalid Python 2 syntax """
         code = ("#bla\n"
                 "a[(...)]")
-        nodes = get_nodes(code, ast.Ellipsis)
+        nodes = get_nodes(code, ast.Ellipsis if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 2), (2, 7), (2, 7))
         self.assertSimpleInnerPosition(nodes[0], (2, 3), (2, 6))
 
@@ -887,7 +888,7 @@ class TestExpr(NodeTestCase):
     def test_name_constant(self):
         code = ("#bla\n"
                 "None")
-        nodes = get_nodes(code, ast.NameConstant)
+        nodes = get_nodes(code, ast.NameConstant if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 4), (2, 4))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -895,7 +896,7 @@ class TestExpr(NodeTestCase):
     def test_name_constant2(self):
         code = ("#bla\n"
                 "True")
-        nodes = get_nodes(code, ast.NameConstant)
+        nodes = get_nodes(code, ast.NameConstant if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 4), (2, 4))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -903,7 +904,7 @@ class TestExpr(NodeTestCase):
     def test_name_constant3(self):
         code = ("#bla\n"
                 "False")
-        nodes = get_nodes(code, ast.NameConstant)
+        nodes = get_nodes(code, ast.NameConstant if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 5), (2, 5))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -911,7 +912,7 @@ class TestExpr(NodeTestCase):
     def test_name_constant4(self):
         code = ("#bla\n"
                 "(None)")
-        nodes = get_nodes(code, ast.NameConstant)
+        nodes = get_nodes(code, ast.NameConstant if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 6), (2, 6))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (2, 5))
 
@@ -921,7 +922,7 @@ class TestExpr(NodeTestCase):
                 "b'ab\\\n"
                 " cd\\\n"
                 " ef'")
-        nodes = get_nodes(code, ast.Bytes)
+        nodes = get_nodes(code, ast.Bytes if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (4, 4), (4, 4))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -929,7 +930,7 @@ class TestExpr(NodeTestCase):
     def test_bytes2(self):
         code = ("#bla\n"
                 "b'abcd'")
-        nodes = get_nodes(code, ast.Bytes)
+        nodes = get_nodes(code, ast.Bytes if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 7), (2, 7))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -939,7 +940,7 @@ class TestExpr(NodeTestCase):
                 "(b'ab'\\\n"
                 " b'cd'\n"
                 " b'ef')")
-        nodes = get_nodes(code, ast.Bytes)
+        nodes = get_nodes(code, ast.Bytes if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (4, 7), (4, 7))
         self.assertSimpleInnerPosition(nodes[0], (2, 1), (4, 6))
 
@@ -947,7 +948,7 @@ class TestExpr(NodeTestCase):
     def test_bytes4(self):
         code = ("#bla\n"
                 "b'ab' b'cd' b'ef'")
-        nodes = get_nodes(code, ast.Bytes)
+        nodes = get_nodes(code, ast.Bytes if lt_python312 else ast.Constant)
         self.assertPosition(nodes[0], (2, 0), (2, 17), (2, 17))
         self.assertNoBeforeInnerAfter(nodes[0])
 
@@ -1040,16 +1041,19 @@ class TestExpr(NodeTestCase):
         self.assertNoBeforeInnerAfter(nodes[0])
         self.assertNoBeforeInnerAfter(nodes[1])
 
-    @ge_python36
+    @between_python36_and_311
     def test_constant(self):
         code = ("#bla\n"
                 "x = 2\n")
 
-        # Constants are created by optimizers
+        # Before Python 3.12, constants are created by optimizers
         # Thus, we must simulate an optimizer
         tree = ast.parse(code)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Num):
+            if (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, ast.Num if lt_python312 else ast.Constant)
+            ):
                 node.value = ast.copy_location(
                     ast.Constant(node.value.n),
                     node.value
