@@ -32,7 +32,9 @@ def nprint(node):
     print('class:', node.__class__)
     # print('dir:', d)
     if 'lineno' in d:
-        print('ast:', (node.lineno, node.col_offset))
+        print('ast (first):', (node.lineno, node.col_offset))
+    if 'end_lineno' in d:
+        print('ast (last):', (node.end_lineno, node.end_col_offset))
     if 'first_line' in d:
         print('first last uid:', (node.first_line, node.first_col),
               (node.last_line, node.last_col),

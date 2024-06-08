@@ -1,13 +1,191 @@
 PyPosAST
 ==========
 
-This project extends Python ast nodes with positional informations, such as where the ast node starts and finishes in the code. This allows us to skip using the Python inconsistent lineno and col_offset
+This project extends Python ast nodes with positional informations, such as where the ast node starts and finishes in the code.
 
-I (João Felipe Pimentel) started this library to help me with ast analysis on [noWorkflow](https://github.com/gems-uff/noworkflow)
+I (João Felipe Pimentel) started this library to help me with ast analysis to help me with ast analises on [noWorkflow](https://github.com/gems-uff/noworkflow).
 
 Installing and using PyPosAST is simple and easy. Please check our installation and basic usage guidelines below.
 
-This package supports Python 2.7, 3.4, 3.5, 3.6, 3.7, and 3.8
+This package currently supports Python 2.7, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13.0b2
+
+
+Differences between Python AST positions and PyPosAST positions.
+------------------
+
+
+This project was originally created before Python 3.9 added `end_lineno` and `end_col_offset` with the goal of fully identifying the AST nodes in the code. Thus, it enrinches the existing AST nodes with different attributes:
+
+<table>
+<tr>
+<th>Attribute</th>
+<th>AST</th>
+<th>PyPosAST</th>
+</tr>
+<tr>
+<th>Start line</th>
+<td>
+
+`node.lineno`
+
+</td>
+<td>
+
+`node.first_line`
+
+</td>
+</tr>
+<tr>
+<th>Start column</th>
+<td>
+
+`node.col_offset`
+
+</td>
+<td>
+
+`node.first_col`
+
+</td>
+</tr>
+<tr>
+<th>End line</th>
+<td>
+
+`node.end_lineno`
+
+</td>
+<td>
+
+`node.last_line`
+
+</td>
+</tr>
+<tr>
+<th>End column</th>
+<td>
+
+`node.end_lineno`
+
+</td>
+<td>
+
+`node.last_col`
+
+</td>
+</tr>
+
+</table>
+
+
+
+There are also some key differences on the interpretation of what is the start and the end of a node.
+
+- In function definitions and class definitions that have decorators, PyPosAST considers the start of the FunctionDef node as the start of the first decorator, while Python AST uses the start of `def`/`class`.
+- In expressions surrounded by parentheses, PyPosAST includes the parentheses in the position of the node.
+- In match_case nodes, PyPosAST includes the case keyword as part of the node to be consistent with other types of nodes.
+
+Moreover, PyPosAST extracts some positions that the Python AST does not extract (e.g., positions of identifier nodes, which are str on the ast). Some of them are available on pseudo-nodes (`node.name_node`, `node.op_pos`, ...), while other positions are integrated on the nodes themselves.
+
+The following table presents some of these differences.
+
+<table>
+<tr>
+<th> Code </th>
+<th> Node </th>
+<th> Tool </th>
+<th> Start line </th>
+<th> Start column </th>
+<th> End line </th>
+<th> End column </th>
+</tr>
+<tr>
+<td rowspan="3">
+
+```python
+@dec
+def f():
+    pass
+```
+
+</td>
+<td rowspan="2">FunctionDef</td>
+<td>AST</td>
+<td style="color: blue">2</td>
+<td>0</td>
+<td>3</td>
+<td>7</td>
+</tr>
+<tr>
+<td>PyPosAST</td>
+<td style="color: blue">1</td>
+<td>0</td>
+<td>3</td>
+<td>7</td>
+</tr>
+<tr>
+<td style="color: blue">FunctionDef.name_node</td>
+<td>PyPosAST</td>
+<td>2</td>
+<td>4</td>
+<td>2</td>
+<td>5</td>
+</tr>
+
+<tr>
+<td rowspan="2">
+
+```python
+(a.b)
+```
+
+</td>
+<td rowspan="2">Attribute</td>
+<td>AST</td>
+<td>1</td>
+<td style="color: blue">1</td>
+<td>1</td>
+<td style="color: blue">4</td>
+</tr>
+<tr>
+<td>PyPosAST</td>
+<td>1</td>
+<td style="color: blue">0</td>
+<td>1</td>
+<td style="color: blue">5</td>
+</tr>
+
+<tr>
+<td rowspan="2">
+
+```python
+match x:
+    case y:
+        pass
+```
+
+</td>
+<td rowspan="2">match_case</td>
+<td>AST</td>
+<td>2</td>
+<td style="color: blue">9</td>
+<td style="color: blue">-</td>
+<td style="color: blue">-</td>
+</tr>
+<tr>
+<td>PyPosAST</td>
+<td>2</td>
+<td style="color: blue">4</td>
+<td style="color: blue">3</td>
+<td style="color: blue">12</td>
+</tr>
+
+
+</table>
+
+
+Limitation: PyPosAST currently only works with unicode code, since it parses the script again to obtain the position of all elements.
+
 
 
 Quick Installation

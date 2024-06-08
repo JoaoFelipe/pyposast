@@ -12,6 +12,25 @@ authors = [
 license = {text = "MIT License"}
 keywords = ["ast", "python", "position", "offset"]
 dynamic = ["version"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Compilers",
+  "Topic :: Software Development :: Interpreters",
+  "Topic :: Software Development :: Pre-processors",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 2.7",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13"
+]
+
 
 [project.urls]
 Homepage = "https://github.com/JoaoFelipe/PyPosAST"
