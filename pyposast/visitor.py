@@ -401,11 +401,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             position = self.dposition(node, dcol=1)
             set_pos(node, *self.parenthesis.find_previous(position))
         else:
-            first = node.elts[0]
-            position = (first.last_line, first.last_col + 1)
-            last, node.uid = self.operators[','].find_next(position)
+            set_uid = None
             set_max_position(node)
-            node.last_line, node.last_col = last
             for elt in node.elts:
                 min_first_max_last(node, elt)
                 position = (elt.last_line, elt.last_col)
@@ -413,7 +410,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 if first:
                     # comma exists
                     node.op_pos.append(NodeWithPosition(last, first, ','))
+                    set_uid = set_uid or first
                     min_first_max_last(node, node.op_pos[-1])
+            node.uid = set_uid or (node.elts[0].last_line, node.elts[0].last_col)
 
     @visit_expr
     def visit_List(self, node):
