@@ -13,7 +13,7 @@ from functools import wraps
 
 from .cross_version import only_python2, only_python3, native_decode_source
 from .cross_version import ge_python36, ge_python37, ge_python38, lt_python39
-from .cross_version import ge_python39, ge_python312
+from .cross_version import ge_python39, ge_python312, ge_python313
 from .constants import OPERATORS
 from .parser import extract_tokens
 from .utils import (pairwise, inc_tuple, dec_tuple, position_between,
@@ -1463,6 +1463,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         if node.bound:
             last, first = self.operators[':'].find_next(position)
             node.op_pos.append(NodeWithPosition(last, first, ':'))
+            position = last
+        if ge_python313 and node.default_value:
+            last, first = self.operators['='].find_next(position)
+            node.op_pos.append(NodeWithPosition(last, first, '='))
 
     @visit_all
     def visit_ParamSpec(self, node):
@@ -1472,6 +1476,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.uid = last
         last, first = self.names[node.name].find_next(last)
         node.name_node = NodeWithPosition(last, first, '<name>')
+        if ge_python313 and node.default_value:
+            last, first = self.operators['='].find_next(last)
+            node.op_pos.append(NodeWithPosition(last, first, '='))
 
     @visit_all
     def visit_TypeVarTuple(self, node):
@@ -1481,6 +1488,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.uid = last
         last, first = self.names[node.name].find_next(last)
         node.name_node = NodeWithPosition(last, first, '<name>')
+        if ge_python313 and node.default_value:
+            last, first = self.operators['='].find_next(last)
+            node.op_pos.append(NodeWithPosition(last, first, '='))
 
     def visit(self, node):
         if hasattr(node, 'lineno'):

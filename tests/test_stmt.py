@@ -11,7 +11,7 @@ from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
 from pyposast.cross_version import ge_python36, ge_python310, ge_python311
-from pyposast.cross_version import ge_python312
+from pyposast.cross_version import ge_python312, ge_python313
 
 
 def nprint(nodes):
@@ -1357,8 +1357,26 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 12), (2, 13), (2, 13), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    @ge_python313
+    def test_type_alias_type_var4(self):
+        code = ("#bla\n"
+                "type Alias[X: int = bool] = list[X]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 35), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 24), (2, 25), (2, 25), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 26), (2, 27), (2, 27), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVar)
+        self.assertPosition(nodes[0], (2, 11), (2, 24), (2, 11))
+        self.assertOperation(nodes[0].name_node, (2, 11), (2, 12), (2, 12), '<name>')
+        self.assertOperation(nodes[0].op_pos[0], (2, 12), (2, 13), (2, 13), ':')
+        self.assertOperation(nodes[0].op_pos[1], (2, 18), (2, 19), (2, 19), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     @ge_python312
-    def test_type_alias_param_spec(self):
+    def test_type_alias_param_spec1(self):
         code = ("#bla\n"
                 "type Alias[**P] = Callable[P, int]")
         nodes = get_nodes(code, ast.TypeAlias)
@@ -1374,8 +1392,26 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 11), (2, 13), (2, 13), '**')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    @ge_python313
+    def test_type_alias_param_spec2(self):
+        code = ("#bla\n"
+                "type Alias[**P = (int, str)] = Callable[P, int]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 47), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 27), (2, 28), (2, 28), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 29), (2, 30), (2, 30), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.ParamSpec)
+        self.assertPosition(nodes[0], (2, 11), (2, 27), (2, 13))
+        self.assertOperation(nodes[0].name_node, (2, 13), (2, 14), (2, 14), '<name>')
+        self.assertOperation(nodes[0].op_pos[0], (2, 11), (2, 13), (2, 13), '**')
+        self.assertOperation(nodes[0].op_pos[1], (2, 15), (2, 16), (2, 16), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     @ge_python312
-    def test_type_alias_type_var_tuple(self):
+    def test_type_alias_type_var_tuple1(self):
         code = ("#bla\n"
                 "type Alias[*Ts] = tuple[*Ts]")
         nodes = get_nodes(code, ast.TypeAlias)
@@ -1389,5 +1425,23 @@ class TestStmt(NodeTestCase):
         self.assertPosition(nodes[0], (2, 11), (2, 14), (2, 12))
         self.assertOperation(nodes[0].name_node, (2, 12), (2, 14), (2, 14), '<name>')
         self.assertOperation(nodes[0].op_pos[0], (2, 11), (2, 12), (2, 12), '*')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python313
+    def test_type_alias_type_var_tuple2(self):
+        code = ("#bla\n"
+                "type Alias[*Ts = ()] = tuple[*Ts]")
+        nodes = get_nodes(code, ast.TypeAlias)
+        self.assertPosition(nodes[0], (2, 0), (2, 33), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'type')
+        self.assertOperation(nodes[0].op_pos[1], (2, 10), (2, 11), (2, 11), '[')
+        self.assertOperation(nodes[0].op_pos[2], (2, 19), (2, 20), (2, 20), ']')
+        self.assertOperation(nodes[0].op_pos[3], (2, 21), (2, 22), (2, 22), '=')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.TypeVarTuple)
+        self.assertPosition(nodes[0], (2, 11), (2, 19), (2, 12))
+        self.assertOperation(nodes[0].name_node, (2, 12), (2, 14), (2, 14), '<name>')
+        self.assertOperation(nodes[0].op_pos[0], (2, 11), (2, 12), (2, 12), '*')
+        self.assertOperation(nodes[0].op_pos[1], (2, 15), (2, 16), (2, 16), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
