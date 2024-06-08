@@ -977,7 +977,6 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             if first and first > node_position:
                 node.op_pos.insert(1, NodeWithPosition(last, first, kind))
 
-
     @visit_stmt
     def visit_Try(self, node):
         start_by_keyword(node, self.operators['try'], self.bytes_pos_to_utf8)
@@ -1001,6 +1000,10 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             last, _ = self.operators[':'].find_previous(position)
             _, first = self.operators['finally'].find_previous(position)
             node.op_pos.append(NodeWithPosition(last, first, 'finally:'))
+
+    @visit_stmt
+    def visit_TryStar(self, node):
+        self.visit_Try(node)
 
     @visit_stmt
     def visit_Raise(self, node):

@@ -10,7 +10,7 @@ import sys
 from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
-from pyposast.cross_version import ge_python36, ge_python310
+from pyposast.cross_version import ge_python36, ge_python310, ge_python311
 
 
 def nprint(nodes):
@@ -252,6 +252,18 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'try:')
         self.assertOperation(nodes[0].op_pos[1], (6, 0), (6, 5), (6, 5), 'else:')
         self.assertOperation(nodes[0].op_pos[2], (8, 0), (8, 8), (8, 8), 'finally:')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python311
+    def test_try_star(self):
+        code = ("#bla\n"
+                "try:\n"
+                "    a\n"
+                "except* Exception:\n"
+                "    b")
+        nodes = get_nodes(code, ast.TryStar)
+        self.assertPosition(nodes[0], (2, 0), (5, 5), (2, 3))
+        self.assertOperation(nodes[0].op_pos[0], (2, 0), (2, 4), (2, 4), 'try:')
         self.assertNoBeforeInnerAfter(nodes[0])
 
     def test_raise(self):
