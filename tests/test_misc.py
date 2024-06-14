@@ -175,6 +175,29 @@ class TestMisc(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 7), (2, 8), (2, 8), ':')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+    @lt_python39
+    def test_ext_slice4(self):
+        code = ("#bla\n"
+                "a[:,3]")
+        nodes = get_nodes(code, ast.ExtSlice)
+        self.assertPosition(nodes[0], (2, 2), (2, 5), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+
+    @ge_python39
+    def test_slice12(self):
+        code = ("#bla\n"
+                "a[:,3]")
+        nodes = get_nodes(code, ast.Tuple)
+        self.assertPosition(nodes[0], (2, 2), (2, 5), (2, 4))
+        self.assertOperation(nodes[0].op_pos[0], (2, 3), (2, 4), (2, 4), ',')
+        self.assertNoBeforeInnerAfter(nodes[0])
+        nodes = get_nodes(code, ast.Slice)
+        self.assertPosition(nodes[0], (2, 2), (2, 3), (2, 3))
+        self.assertOperation(nodes[0].op_pos[0], (2, 2), (2, 3), (2, 3), ':')
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     def test_eq(self):
         code = ("#bla\n"
                 "2 == 4")

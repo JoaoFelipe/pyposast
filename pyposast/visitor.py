@@ -312,6 +312,9 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         node.op_pos = []
         for sub_node in node.children:
             min_first_max_last(node, sub_node)
+        if not node.children and ge_python39:
+            node.first_line, node.first_col = node.lineno, node.col_offset
+            node.last_line, node.last_col = node.end_lineno, node.end_col_offset
 
     def process_slice(self, the_slice, previous):
         if only_python2 and isinstance(the_slice, ast.Ellipsis):
