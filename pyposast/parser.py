@@ -131,7 +131,7 @@ class TokenCollector(object):
                                 apply_delta(t_srow_scol, 0, index + 2),
                                 apply_delta(t_srow_scol, 0, index + 3),
                             )
-                            self.loop(sub, t_srow_scol[0] - 1, oindex + 2)
+                            self.loop(sub, t_srow_scol[0] - 1, t_srow_scol[1] + oindex + 3)
 
                 start = t_srow_scol
                 if last and last[0] == tokenize.STRING:

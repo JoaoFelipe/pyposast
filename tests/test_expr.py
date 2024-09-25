@@ -1051,6 +1051,17 @@ class TestExpr(NodeTestCase):
         self.assertNoBeforeInnerAfter(nodes[0])
         self.assertNoBeforeInnerAfter(nodes[1])
 
+    @ge_python36
+    def test_formatted_value3(self):
+        code = ("#bla\n"
+                "a = 1\n"
+                "b = 2\n"
+                "d = f'r: {[a * b, b * a, a, b]}'\n"
+                "# other")
+        nodes = get_nodes(code, ast.FormattedValue)
+        self.assertPosition(nodes[0], (4, 9), (4, 31), (4, 31))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
     @between_python36_and_311
     def test_constant(self):
         code = ("#bla\n"
