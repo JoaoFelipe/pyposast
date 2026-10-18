@@ -1445,3 +1445,39 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[1], (2, 15), (2, 16), (2, 16), '=')
         self.assertNoBeforeInnerAfter(nodes[0])
 
+
+    def test_decorated_functions_adjacent_at(self):
+        code = ("@staticmethod\n"
+                "def first():\n"
+                "    return 1\n"
+                "\n"
+                "@staticmethod\n"
+                "def second():\n"
+                "    return 2\n")
+        nodes = get_nodes(code, ast.FunctionDef)
+        self.assertEqual((nodes[0].first_line, nodes[0].first_col), (1, 0))
+        self.assertEqual((nodes[1].first_line, nodes[1].first_col), (5, 0))
+        self.assertOperation(nodes[0].op_pos[0], (1, 0), (1, 1), (1, 1), '@')
+        self.assertOperation(nodes[1].op_pos[0], (5, 0), (5, 1), (5, 1), '@')
+
+    def test_decorated_classes_adjacent_at(self):
+        code = ("@register\n"
+                "class First:\n"
+                "    pass\n"
+                "\n"
+                "@register\n"
+                "class Second:\n"
+                "    pass\n")
+        nodes = get_nodes(code, ast.ClassDef)
+        self.assertEqual((nodes[0].first_line, nodes[0].first_col), (1, 0))
+        self.assertEqual((nodes[1].first_line, nodes[1].first_col), (5, 0))
+        self.assertPosition(nodes[0].name_node, (2, 6), (2, 11), (2, 11))
+        self.assertPosition(nodes[1].name_node, (6, 6), (6, 12), (6, 12))
+
+    def test_decorated_class_after_matmul(self):
+        code = ("x = a @ b\n"
+                "@register\n"
+                "class Only:\n"
+                "    pass\n")
+        nodes = get_nodes(code, ast.ClassDef)
+        self.assertEqual((nodes[0].first_line, nodes[0].first_col), (2, 0))
