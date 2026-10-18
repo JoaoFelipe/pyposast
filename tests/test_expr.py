@@ -1024,6 +1024,49 @@ class TestExpr(NodeTestCase):
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @ge_python36
+    def test_joined_str_literal_braces(self):
+        code = ("#bla\n"
+                "name = 'items'\n"
+                "f'{{{name}}}'\n")
+        nodes = get_nodes(code, ast.JoinedStr)
+        names = get_nodes(code, ast.Name)
+        self.assertPosition(nodes[0], (3, 0), (3, 13), (3, 13))
+        self.assertPosition(names[1], (3, 5), (3, 9), (3, 9))
+
+    @ge_python36
+    def test_joined_str_literal_braces2(self):
+        code = ("#bla\n"
+                "f'{{literal}}'\n")
+        nodes = get_nodes(code, ast.JoinedStr)
+        self.assertPosition(nodes[0], (2, 0), (2, 14), (2, 14))
+
+    @ge_python36
+    def test_joined_str_literal_braces3(self):
+        code = ("#bla\n"
+                "f'{{}} and {1}'\n")
+        nodes = get_nodes(code, ast.JoinedStr)
+        self.assertPosition(nodes[0], (2, 0), (2, 15), (2, 15))
+
+    @ge_python36
+    def test_joined_str_literal_braces_nested_spec(self):
+        code = ("#bla\n"
+                "x = w = 1\n"
+                "f'{{ {x:>{w}} }}'\n")
+        names = get_nodes(code, ast.Name)
+        self.assertPosition(names[2], (3, 6), (3, 7), (3, 7))
+        self.assertPosition(names[3], (3, 10), (3, 11), (3, 11))
+
+    @ge_python36
+    def test_joined_str_trailing_open_brace(self):
+        code = ("#bla\n"
+                "n = 1\n"
+                "f'{n} {{'\n"
+                "f'}} {n}'\n")
+        names = get_nodes(code, ast.Name)
+        self.assertPosition(names[1], (3, 3), (3, 4), (3, 4))
+        self.assertPosition(names[2], (4, 6), (4, 7), (4, 7))
+
+    @ge_python36
     def test_formatted_value(self):
         code = ("#bla\n"
                 "a = 2\n"
