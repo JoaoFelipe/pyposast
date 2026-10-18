@@ -1024,6 +1024,25 @@ class TestExpr(NodeTestCase):
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @ge_python36
+    def test_joined_str_call_argument(self):
+        code = ("#bla\n"
+                "print(f'a{1}')\n"
+                "print(f'a{1}', end='')")
+        nodes = get_nodes(code, ast.JoinedStr)
+        self.assertEqual((nodes[0].first_line, nodes[0].first_col,
+                          nodes[0].last_line, nodes[0].last_col), (2, 6, 2, 13))
+        self.assertEqual((nodes[1].first_line, nodes[1].first_col,
+                          nodes[1].last_line, nodes[1].last_col), (3, 6, 3, 13))
+
+    @ge_python36
+    def test_joined_str_call_argument_parenthesized(self):
+        code = ("#bla\n"
+                "print((f'a{1}'))")
+        nodes = get_nodes(code, ast.JoinedStr)
+        self.assertEqual((nodes[0].first_line, nodes[0].first_col,
+                          nodes[0].last_line, nodes[0].last_col), (2, 6, 2, 15))
+    
+    @ge_python36
     def test_joined_str_literal_braces(self):
         code = ("#bla\n"
                 "name = 'items'\n"
