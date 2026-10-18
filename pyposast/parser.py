@@ -9,7 +9,7 @@ import tokenize
 
 from collections import OrderedDict, defaultdict
 
-from .cross_version import StringIO, ge_python312
+from .cross_version import StringIO, ge_python312, ge_python314
 from .constants import (KEYWORDS, COMBINED_KEYWORDS, SEMI_KEYWORDS,
                         FUTURE_KEYWORDS, PAST_KEYWORKDS)
 
@@ -153,6 +153,13 @@ class TokenCollector(object):
             elif t_type in start_types:
                 fstring_stack.append([t_srow_scol, [t_string]])
             elif t_type in end_types:
+                start, parts = fstring_stack.pop()
+                self.strings[t_erow_ecol] = start
+                fstring_stack[-1][1].pop()
+                fstring_stack[-1][1].append(''.join(parts))
+            elif ge_python314 and t_type == tokenize.TSTRING_START:
+                fstring_stack.append([t_srow_scol, [t_string]])
+            elif ge_python314 and t_type == tokenize.TSTRING_END:
                 start, parts = fstring_stack.pop()
                 self.strings[t_erow_ecol] = start
                 fstring_stack[-1][1].pop()
