@@ -1209,7 +1209,8 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     def adjust_decorator(self, node, dec):
         position = dec.first_line, dec.first_col
-        last, first = self.operators['@'].find_previous(position)
+        last, first = self.operators['@'].find_previous(
+            position, inclusive=True)
         if (node.first_line, node.first_col) == position:
             node.first_line, node.first_col = first
         node.op_pos.insert(-2, NodeWithPosition(last, first, '@'))
