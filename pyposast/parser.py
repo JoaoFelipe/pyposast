@@ -111,7 +111,7 @@ class TokenCollector(object):
                         first_dot = None
                 self.operators[t_string][t_erow_ecol] = t_srow_scol
             elif t_type == tokenize.STRING:
-                if t_string.startswith('f'): # Python 3.6 <= x < 3.12
+                if 'f' in t_string[:t_string.find(t_string[-1])].lower(): # Python 3.6 <= x < 3.12
                     inner = t_string[2:-1]
                     stack = []
                     skip = False
