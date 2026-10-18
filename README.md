@@ -7,7 +7,7 @@ I (João Felipe Pimentel) started this library to help me with ast analysis to h
 
 Installing and using PyPosAST is simple and easy. Please check our installation and basic usage guidelines below.
 
-This package currently supports Python 2.7, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13.0b2
+This package currently supports Python 2.7 and Python 3.6 through 3.15.
 
 
 Differences between Python AST positions and PyPosAST positions.
@@ -272,4 +272,3 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
