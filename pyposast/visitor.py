@@ -237,6 +237,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
                 self.visit(value)
         position = self.dposition(node)
         r_set_pos(node, *self.strings.find_next(position))
+        update_expr_parenthesis(self.lcode, self.parenthesis, node)
 
     @ge_python36
     def visit_FormattedValue(self, node):
