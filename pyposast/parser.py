@@ -87,6 +87,12 @@ class TokenCollector(object):
         first_dot = None
 
         fstring_stack = [[None, []]]
+        start_types = tuple(
+            getattr(tokenize, n) for n in ("FSTRING_START", "TSTRING_START")
+            if hasattr(tokenize, n))
+        end_types = tuple(
+            getattr(tokenize, n) for n in ("FSTRING_END", "TSTRING_END")
+            if hasattr(tokenize, n))
 
         f = StringIO(code)
         for tok in tokenize.generate_tokens(f.readline):
@@ -144,9 +150,9 @@ class TokenCollector(object):
                     start = self.strings[last[3]]
                     del self.strings[last[3]]
                 self.strings[t_erow_ecol] = start
-            elif ge_python312 and t_type == tokenize.FSTRING_START:
+            elif t_type in start_types:
                 fstring_stack.append([t_srow_scol, [t_string]])
-            elif ge_python312 and t_type == tokenize.FSTRING_END:
+            elif t_type in end_types:
                 start, parts = fstring_stack.pop()
                 self.strings[t_erow_ecol] = start
                 fstring_stack[-1][1].pop()
