@@ -114,10 +114,16 @@ class TokenCollector(object):
                 if t_string.startswith('f'): # Python 3.6 <= x < 3.12
                     inner = t_string[2:-1]
                     stack = []
+                    skip = False
                     for index, char in enumerate(inner):
+                        if skip:
+                            skip = False
+                            continue
+                        if not stack and inner[index:index + 2] in ("{{", "}}"):
+                            skip = True
+                            continue
                         if char == "{":
-                            if not stack or stack[-1] != index - 1:
-                                stack.append(index)
+                            stack.append(index)
                         if char == "}" and stack:
                             oindex = stack.pop()
                             sub = inner[oindex + 1:index]
