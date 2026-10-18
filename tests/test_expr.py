@@ -12,6 +12,7 @@ from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
 from pyposast.cross_version import ge_python36, ge_python38, between_python3_and_38
 from pyposast.cross_version import lt_python312, between_python36_and_311
+from pyposast.cross_version import ge_python314
 
 
 def nprint(nodes):
@@ -1022,6 +1023,19 @@ class TestExpr(NodeTestCase):
         nodes = get_nodes(code, ast.JoinedStr)
         self.assertPosition(nodes[0], (3, 0), (3, 6), (3, 6))
         self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python314
+    def test_template_str(self):
+        code = 't"hello {name} finished {place:ordinal}"'
+        nodes = get_nodes(code, ast.TemplateStr)
+        interpolations = get_nodes(code, ast.Interpolation)
+        names = get_nodes(code, ast.Name)
+
+        self.assertPosition(nodes[0], (1, 0), (1, len(code)), (1, len(code)))
+        self.assertPosition(interpolations[0], (1, 8), (1, 14), (1, 14))
+        self.assertPosition(interpolations[1], (1, 24), (1, 39), (1, 39))
+        self.assertPosition(names[0], (1, 9), (1, 13), (1, 13))
+        self.assertPosition(names[1], (1, 25), (1, 30), (1, 30))
 
     @ge_python36
     def test_joined_str_prefixes(self):

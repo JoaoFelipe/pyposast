@@ -12,7 +12,8 @@ from operator import sub
 from functools import wraps
 
 from .cross_version import only_python2, only_python3, native_decode_source
-from .cross_version import ge_python36, ge_python37, ge_python38, lt_python39
+from .cross_version import ge_python36, ge_python37, ge_python38, ge_python314
+from .cross_version import lt_python39
 from .cross_version import ge_python39, ge_python312, ge_python313
 from .constants import OPERATORS
 from .parser import extract_tokens
@@ -222,10 +223,17 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @ge_python36
     def visit_JoinedStr(self, node):
+        self.visit_string_like(node, ast.FormattedValue)
+
+    @ge_python314
+    def visit_TemplateStr(self, node):
+        self.visit_string_like(node, ast.Interpolation)
+
+    def visit_string_like(self, node, interpolation_type):
         position = self.dposition(node)
         last_position = (node.lineno, node.col_offset)
         for value in node.values:
-            if isinstance(value, ast.FormattedValue):
+            if isinstance(value, interpolation_type):
                 value.bracket = self.brackets.find_next(last_position)
                 self.visit(value)
                 last_position = (
@@ -246,6 +254,14 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
     @ge_python36
     def visit_FormattedValue(self, node):
+        set_pos(node, *node.bracket)
+        self.visit(node.value)
+        if node.format_spec:
+            self.visit(node.format_spec)
+        update_expr_parenthesis(self.lcode, self.parenthesis, node)
+
+    @ge_python314
+    def visit_Interpolation(self, node):
         set_pos(node, *node.bracket)
         self.visit(node.value)
         if node.format_spec:
