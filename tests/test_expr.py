@@ -1024,6 +1024,18 @@ class TestExpr(NodeTestCase):
         self.assertNoBeforeInnerAfter(nodes[0])
 
     @ge_python36
+    def test_joined_str_with_string_in_field(self):
+        code = ("#bla\n"
+                "items = ['a']\n"
+                "a = f\"{', '.join(items)} items\"\n"
+                "b = f\"{f'{len(items)}'} items\"")
+        nodes = get_nodes(code, ast.JoinedStr)
+        self.assertEqual((nodes[0].first_line, nodes[0].first_col,
+                          nodes[0].last_line, nodes[0].last_col), (3, 4, 3, 31))
+        self.assertEqual((nodes[1].first_line, nodes[1].first_col,
+                          nodes[1].last_line, nodes[1].last_col), (4, 4, 4, 30))
+
+    @ge_python36
     def test_joined_str_call_argument(self):
         code = ("#bla\n"
                 "print(f'a{1}')\n"

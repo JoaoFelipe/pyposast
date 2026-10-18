@@ -235,8 +235,13 @@ class LineProvenanceVisitor(ast.NodeVisitor):
 
             else:
                 self.visit(value)
-        position = self.dposition(node)
-        r_set_pos(node, *self.strings.find_next(position))
+        position = ast_pos(self.dnode(node), self.bytes_pos_to_utf8)
+        result = self.strings.find_next(position)
+        for end, start in self.strings.items():
+            if start == position and end >= result[0]:
+                result = (end, start)
+                break
+        r_set_pos(node, *result)
         update_expr_parenthesis(self.lcode, self.parenthesis, node)
 
     @ge_python36
