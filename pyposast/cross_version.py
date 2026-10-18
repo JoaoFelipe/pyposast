@@ -54,6 +54,7 @@ between_python36_and_311 = SelectVersion(lambda x: (3, 6) <= x < (3, 12))
 between_python3_and_38 = SelectVersion(lambda x: (3, 0) <= x < (3, 9))
 ge_python312 = SelectVersion(lambda x: x >= (3, 12))
 ge_python313 = SelectVersion(lambda x: x >= (3, 13))
+ge_python315 = SelectVersion(lambda x: x >= (3, 15))
 
 
 if only_python3:

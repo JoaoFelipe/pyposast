@@ -12,6 +12,7 @@ from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
 from pyposast.cross_version import ge_python36, ge_python310, ge_python311
 from pyposast.cross_version import ge_python312, ge_python313
+from pyposast.cross_version import ge_python315
 
 
 def nprint(nodes):
@@ -156,6 +157,49 @@ class TestStmt(NodeTestCase):
         self.assertOperation(nodes[1].op_pos[0], (3, 0), (3, 4), (3, 4), 'from')
         self.assertOperation(nodes[1].op_pos[1], (3, 9), (3, 15), (3, 15), 'import')
         self.assertNoBeforeInnerAfter(nodes[1])
+
+    @ge_python315
+    def test_lazy_import(self):
+        code = ("import os\n"
+                "x = 1\n"
+                "lazy import json")
+        nodes = get_nodes(code, ast.Import)
+        self.assertPosition(nodes[0], (1, 0), (1, 9), (1, 6))
+        self.assertPosition(nodes[1], (3, 0), (3, 16), (3, 11))
+        self.assertNoBeforeInnerAfter(nodes[1])
+
+    @ge_python315
+    def test_lazy_import_name_used_earlier(self):
+        code = ("import os\n"
+                "def dump(data):\n"
+                "    return json.dumps(data)\n"
+                "lazy import json")
+        nodes = get_nodes(code, ast.Import)
+        self.assertPosition(nodes[1], (4, 0), (4, 16), (4, 11))
+
+    @ge_python315
+    def test_lazy_import_before_plain_import(self):
+        code = ("lazy import json\n"
+                "x = 1\n"
+                "import os")
+        nodes = get_nodes(code, ast.Import)
+        self.assertPosition(nodes[0], (1, 0), (1, 16), (1, 11))
+        self.assertPosition(nodes[1], (3, 0), (3, 9), (3, 6))
+
+    @ge_python315
+    def test_lazy_import_from(self):
+        code = "lazy from json import dumps"
+        nodes = get_nodes(code, ast.ImportFrom)
+        self.assertPosition(nodes[0], (1, 0), (1, 27), (1, 9))
+        self.assertNoBeforeInnerAfter(nodes[0])
+
+    @ge_python315
+    def test_lazy_import_from_after_plain(self):
+        code = ("from os import sep\n"
+                "lazy from json import dumps")
+        nodes = get_nodes(code, ast.ImportFrom)
+        self.assertPosition(nodes[0], (1, 0), (1, 18), (1, 4))
+        self.assertPosition(nodes[1], (2, 0), (2, 27), (2, 9))
 
     def test_import(self):
         code = ("#bla\n"
