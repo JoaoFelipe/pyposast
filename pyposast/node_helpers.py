@@ -116,12 +116,17 @@ def keyword_followed_by_ids(node, keyword, names, ids, bytes_pos_to_utf8):
 def start_by_keyword(node, keyword, bytes_pos_to_utf8, set_last=True, inclusive=False, delta=(0, 0)):
     position = ast_pos(node, bytes_pos_to_utf8)
     position = (position[0] + delta[0], position[1] + delta[1])
-    try:
-        node.uid, first = keyword.find_next(position, inclusive=inclusive)
-        if first != position:
-            raise IndexError
-    except IndexError:
-        node.uid, first = keyword.find_previous(position, inclusive=inclusive)
+    if getattr(node, 'is_lazy', 0):
+        node.uid, _ = keyword.find_next(position, inclusive=inclusive)
+        first = position
+    else:
+        try:
+            node.uid, first = keyword.find_next(position, inclusive=inclusive)
+            if first != position:
+                raise IndexError
+        except IndexError:
+            node.uid, first = keyword.find_previous(
+                position, inclusive=inclusive)
     node.first_line, node.first_col = first
     if set_last:
         node.last_line, node.last_col = node.uid
