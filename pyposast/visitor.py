@@ -675,7 +675,7 @@ class LineProvenanceVisitor(ast.NodeVisitor):
             if ge_python38:
                 pos_only_defaults = node.defaults[:-len(node.args) or None]
                 pos_only_args = node.posonlyargs[:-len(pos_only_defaults) or None]
-                pos_only_with_defaults = zip(node.posonlyargs[-len(pos_only_defaults):], node.defaults)
+                pos_only_with_defaults = zip(node.posonlyargs[len(pos_only_args):], pos_only_defaults)
         else:
             pos_args = node.args[:-len(node.defaults) or None]
             args_with_defaults = zip(node.args[len(pos_args):], node.defaults)
