@@ -11,8 +11,7 @@ from .utils import NodeTestCase
 from pyposast import get_nodes
 from pyposast.cross_version import only_python2, only_python3, ge_python35
 from pyposast.cross_version import ge_python36, ge_python38, between_python3_and_38
-from pyposast.cross_version import lt_python312, between_python36_and_311
-from pyposast.cross_version import ge_python314
+from pyposast.cross_version import ge_python314, lt_python312, between_python36_and_311
 
 
 def nprint(nodes):
@@ -707,6 +706,7 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[4], (4, 3), (4, 4), (4, 4), ':')
         self.assertSimpleInnerPosition(nodes[0], (2, 6), (4, 7))
 
+    @ge_python35
     def test_dict_unpacking(self):
         nodes = get_nodes("{**value, **more_value}", ast.Dict)
         node = nodes[0]
@@ -1233,3 +1233,35 @@ class TestExpr(NodeTestCase):
             "=",
         )
         self.assertPosition(default, (1, 14), (1, 15), (1, 15))
+
+class TestTemplateStr(NodeTestCase):
+    # pylint: disable=missing-docstring
+
+    def _literal(self, code):
+        nodes = get_nodes(code, ast.TemplateStr)
+        return nodes[0].values[0]
+
+    @ge_python314
+    def test_template_str_without_later_string(self):
+        part = self._literal('name = "x"\nvalue = t"hello {name}"\n')
+        self.assertEqual((part.first_line, part.first_col,
+                          part.last_line, part.last_col), (2, 8, 2, 23))
+
+    @ge_python314
+    def test_template_str_with_later_string(self):
+        part = self._literal(
+            'name = "x"\nvalue = t"hello {name}"\nlater = "later"\n')
+        self.assertEqual((part.first_line, part.first_col,
+                          part.last_line, part.last_col), (2, 8, 2, 23))
+
+    @ge_python314
+    def test_template_str_without_interpolation(self):
+        part = self._literal('value = t"hello"\n')
+        self.assertEqual((part.first_line, part.first_col,
+                          part.last_line, part.last_col), (1, 8, 1, 16))
+
+    @ge_python314
+    def test_template_str_interpolation_only(self):
+        nodes = get_nodes('name = 1\nvalue = t"{name}"\n', ast.Name)
+        self.assertEqual((nodes[2].first_line, nodes[2].first_col,
+                          nodes[2].last_line, nodes[2].last_col), (2, 11, 2, 15))

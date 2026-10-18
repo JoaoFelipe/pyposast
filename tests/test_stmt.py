@@ -1518,6 +1518,7 @@ class TestStmt(NodeTestCase):
         self.assertPosition(nodes[0].name_node, (2, 6), (2, 11), (2, 11))
         self.assertPosition(nodes[1].name_node, (6, 6), (6, 12), (6, 12))
 
+    @ge_python35
     def test_decorated_class_after_matmul(self):
         code = ("x = a @ b\n"
                 "@register\n"
