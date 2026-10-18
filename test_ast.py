@@ -6,7 +6,7 @@ from __future__ import (absolute_import, division)
 
 import unittest
 
-from tests import TestExpr, TestMisc, TestStmt, TestMod, TestExtra
+from tests import TestExpr, TestTemplateStr, TestMisc, TestStmt, TestMod, TestExtra
 
 
 if __name__ == '__main__':

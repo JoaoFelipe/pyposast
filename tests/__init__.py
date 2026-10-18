@@ -4,7 +4,7 @@
 
 from __future__ import (absolute_import, division)
 
-from .test_expr import TestExpr
+from .test_expr import TestExpr, TestTemplateStr
 from .test_misc import TestMisc
 from .test_stmt import TestStmt
 from .test_mod import TestMod
