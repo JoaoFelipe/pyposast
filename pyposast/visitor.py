@@ -563,9 +563,15 @@ class LineProvenanceVisitor(ast.NodeVisitor):
         position = self.dposition(node, dcol=1)
         set_pos(node, *self.brackets.find_previous(position))
         for key, value in zip(keys(node), values(node)):
-            position = (key.last_line, key.last_col)
-            first, last = find_next_colon(self.lcode, position)
-            node.op_pos.append(NodeWithPosition(last, first, ':'))
+            if key is None:
+                # None keys represent dictionary unpacking in the Python AST.
+                position = (value.first_line, value.first_col)
+                last, first = self.operators['**'].find_previous(position, inclusive=True)
+                node.op_pos.append(NodeWithPosition(last, first, '**'))
+            else:
+                position = (key.last_line, key.last_col)
+                first, last = find_next_colon(self.lcode, position)
+                node.op_pos.append(NodeWithPosition(last, first, ':'))
 
             position = (value.last_line, value.last_col)
             first, last = find_next_comma(self.lcode, position)

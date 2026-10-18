@@ -706,6 +706,16 @@ class TestExpr(NodeTestCase):
         self.assertOperation(nodes[0].op_pos[4], (4, 3), (4, 4), (4, 4), ':')
         self.assertSimpleInnerPosition(nodes[0], (2, 6), (4, 7))
 
+    def test_dict_unpacking(self):
+        nodes = get_nodes("{**value, **more_value}", ast.Dict)
+        node = nodes[0]
+
+        self.assertPosition(node, (1, 0), (1, 23), (1, 23))
+        self.assertOperation(node.op_pos[0], (1, 1), (1, 3), (1, 3), '**')
+        self.assertOperation(node.op_pos[1], (1, 8), (1, 9), (1, 9), ',')
+        self.assertOperation(node.op_pos[2], (1, 10), (1, 12), (1, 12), '**')
+        self.assertNoBeforeInnerAfter(node)
+
     def test_if_exp(self):
         code = ("#bla\n"
                 "1 if 2\\\n"
